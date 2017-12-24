@@ -3,6 +3,9 @@
 *.lo
 *.o
 *.obj
+*.crf
+*.d
+*.iex
 
 # Precompiled Headers
 *.gch
@@ -26,3 +29,26 @@
 *.exe
 *.out
 *.app
+
+# MDK Project
+*.bat
+JLinkLog.txt
+*.Bak
+*.dep
+*.htm
+*.map
+*.axf
+*.uvoptx
+*.lnp
+debug.ini
+JLinkSettings.ini
+*.uvguix.*
+*.dbgconf
+*.lst
+
+# CubeMX Project
+*.mxproject
+*.scratch
+
+# VScode
+*.json

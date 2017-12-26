@@ -136,6 +136,11 @@ protected:
             back <<= 1;
             back |= HAL_GPIO_ReadPin(pins[i].port, pins[i].pin) == GPIO_PIN_SET ? 1 : 0;
         }
+        if (back == 0) {
+            subMem = 0;
+            ans = 0;
+            return 0;
+        }
         return front << 4 | back;
     }
     /**

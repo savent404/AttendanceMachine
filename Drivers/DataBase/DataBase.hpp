@@ -50,7 +50,7 @@ public:
     {
         const uint8_t* ptr = _data;
         for (int i = 0; i < _size; i++) {
-            if (*ptr++ != 'a')
+            if (*ptr++ != '0')
                 return false;
         }
         return true;
@@ -90,34 +90,28 @@ private:
 
 class DB_FingerPrint : public DB_Base {
 public:
-    DB_FingerPrint(const uint8_t* data = "aa")
+    DB_FingerPrint(const uint8_t* data = "00")
         : DB_Base(data, 2, 1)
     {
     }
 };
 class DB_RFID : public DB_Base {
 public:
-    DB_RFID(const uint8_t* data = "aaaa")
+    DB_RFID(const uint8_t* data = "0000")
         : DB_Base(data, 4, 2)
     {
     }
 };
 class DB_RoomID : public DB_Base {
 public:
-    DB_RoomID(const uint8_t* data = "aa")
-        : DB_Base(data, 2, 3)
+    DB_RoomID(const uint8_t* data = "0000")
+        : DB_Base(data, 4, 3)
     {
-    }
-
-    static inline void convert(const uint8_t level, const uint8_t room, uint8_t buf[2])
-    {
-        buf[0] = level;
-        buf[1] = room;
     }
 };
 class DB_Password : public DB_Base {
 public:
-    DB_Password(const uint8_t *data = "aaaaaa")
+    DB_Password(const uint8_t* data = "000000")
         : DB_Base(data, 6, 4)
     {
     }
@@ -125,7 +119,9 @@ public:
 
 class DB_Usr {
 public:
-    DB_Usr() {}
+    DB_Usr()
+    {
+    }
     DB_Usr(const uint8_t* addr)
     {
         const uint8_t* ptr = addr;
@@ -244,7 +240,7 @@ public:
         return true;
     }
 
-// private:
+    // private:
     DB_FingerPrint finger[5];
     DB_RFID rfid;
     DB_RoomID rid;

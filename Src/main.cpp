@@ -103,26 +103,7 @@ int main(void)
   MX_RTC_Init();
 
   /* USER CODE BEGIN 2 */
-  static const char *str = NULL;
-  STP_KeyMat* kmat = new STP_KeyMat;
-  Opera *op = new Opera_getNFC(*kmat);
-  
-  if(op->init() != true) {
-    str = op->getErrorString();
-  }
-  if (op->loop() != true) {
-    if (op->getResCode() != Opera::USR_Error) {
-      str = op->getErrorString();
-    }
-    else {
-      str = op->getErrorString();
-    }
-  }
-  if (op->deinit() != true) {
-    str = op->getErrorString();
-  }
-  
-  delete op;
+  OP_Handle();
   /* USER CODE END 2 */
 
   /* Infinite loop */

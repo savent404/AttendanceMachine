@@ -40,6 +40,7 @@ JLinkLog.txt
 *.axf
 *.uvoptx
 *.lnp
+*.__i
 debug.ini
 JLinkSettings.ini
 *.uvguix.*

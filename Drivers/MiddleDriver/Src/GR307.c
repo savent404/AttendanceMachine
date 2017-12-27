@@ -100,14 +100,6 @@ uint8_t GR307_Register(uint16_t *ID)
   uint8_t buffer[4];
   uint8_t res;
 
-  // 打开LED
-  buffer[0] = 0x35;
-  buffer[1] = 0x01;
-  send(0x01, buffer, 2);
-  res = checkAck(NULL, 0, GR307_DEFAULT_TIMEOUT);
-  if (res != 0)
-    return res;
-
   buffer[0] = 0x33; //指令码:注册
   send(0x01, buffer, 1);
   res = checkAck(buffer, 2, GR307_WAITFIGURE_TIMEOUT);
@@ -116,12 +108,6 @@ uint8_t GR307_Register(uint16_t *ID)
   {
     *ID = buffer[0] << 8 | buffer[1];
   }
-
-  // 关闭LED
-  // note: 打开LED时已检查结果，若打开LED错误则不会执行到此处
-  buffer[0] = 0x35;
-  buffer[1] = 0x00;
-  send(0x01, buffer, 2);
 
   // 返回注册结果
   return res;
@@ -132,13 +118,6 @@ uint8_t GR307_Check(uint16_t *ID)
   uint8_t buffer[4];
   uint8_t res;
   uint8_t code = 0;
-  // 打开LED
-  buffer[0] = 0x35;
-  buffer[1] = 0x01;
-  send(0x01, buffer, 2);
-  res = checkAck(NULL, 0, GR307_DEFAULT_TIMEOUT);
-  if (res != 0)
-    return res;
 
   buffer[0] = 0x34; //指令码:验证
   send(0x01, buffer, 1);
@@ -152,13 +131,6 @@ uint8_t GR307_Check(uint16_t *ID)
     if (code < 30)
       res = 0x09;
   }
-
-  // 关闭LED
-  // note: 打开LED时已检查结果，若打开LED错误则不会执行到此处
-  buffer[0] = 0x35;
-  buffer[1] = 0x00;
-  send(0x01, buffer, 2);
-
   // 返回验证结果
   return res;
 }

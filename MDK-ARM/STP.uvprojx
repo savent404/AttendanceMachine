@@ -648,6 +648,11 @@
               <FileType>8</FileType>
               <FilePath>..\Src\opera.cpp</FilePath>
             </File>
+            <File>
+              <FileName>opera_handle.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>..\Src\opera_handle.cpp</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

@@ -2,6 +2,7 @@
 
 #include "DataBase.hpp"
 #include "stm32f4xx_hal.h"
+#include "GR307.h"
 #include <list>
 
 // FLASH 使用范围
@@ -118,6 +119,12 @@ public:
         }
         if (!isExit)
             return;
+				// Delete data in GR307
+				for (int i = 0; i < 5; i++) {
+						uint8_t* buf = node->finger[i].data();
+						uint16_t id = *buf | (*(buf + 1) << 8);
+						GR307_Delete(id);
+				}
         std::list<DB_Usr>* new_arry = new std::list<DB_Usr>;
         for (auto n = arry->begin(); n != arry->end(); n++) {
             if (n != node) {
@@ -135,6 +142,13 @@ public:
     {
         if (arry->size())
             modi = true;
+				for (auto node : *arry) {
+          for (int i = 0; i < 5; i++) {
+						uint8_t* buf = node.finger[i].data();
+						uint16_t id = *buf | (*(buf + 1) << 8);
+						GR307_Delete(id);
+          }
+				}
         arry->clear();
     }
     /**
@@ -288,6 +302,7 @@ public:
     /**
      * @brief  返回每个sector最大容量
      * @note   测试起见,0x4000的sector只使用0x1000Bytes
+     */
     static uint32_t getMaxSize(const uint32_t* baseAddr)
     {
         // return 0x4000;

@@ -1,8 +1,8 @@
 #include "opera.hpp"
 /*********************************************
  * @name   Opera_getNFC
- * @brief  èŽ·å–4å­—èŠ‚çš„RFID
- * @note   è¿‡ç¨‹ä¸­å“åº”é€€å‡ºäº‹ä»¶
+ * @brief  »ñÈ¡4×Ö½ÚµÄRFID
+ * @note   ¹ý³ÌÖÐÏìÓ¦ÍË³öÊÂ¼þ
  */
 Opera_getNFC::Opera_getNFC(STP_KeyMat& kb)
     : Opera(4)
@@ -11,6 +11,7 @@ Opera_getNFC::Opera_getNFC(STP_KeyMat& kb)
 }
 bool Opera_getNFC::init()
 {
+    STP_LCD::clear();
     nfc = new Adafruit_NFCShield_I2C(
         Adafruit_NFCShield_I2C::STM32_Pin(PN532_RDY_GPIO_Port, PN532_RDY_Pin),
         Adafruit_NFCShield_I2C::STM32_Pin((GPIO_TypeDef*)NULL, 0),
@@ -33,6 +34,7 @@ bool Opera_getNFC::init()
 bool Opera_getNFC::deinit()
 {
     delete nfc;
+    STP_LCD::clear();
     return true;
 }
 bool Opera_getNFC::exitCheck()
@@ -48,6 +50,7 @@ bool Opera_getNFC::loop()
 {
     uint8_t uid[10];
     uint8_t uidLen;
+    STP_LCD::setTitle("ÇëË¢¿¨");
     while (1) {
         if (nfc->readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLen)) {
             memcpy(ans, uid, 4);
@@ -61,18 +64,20 @@ bool Opera_getNFC::loop()
 
 /*********************************************
  * @name   Opera_getFinger
- * @brief  å¯¹æ¯”ä¸€ä¸ªæŒ‡çº¹æˆ–è€…æ³¨å†Œä¸€ä¸ªæ–°çš„åˆ°æŒ‡çº¹åº“
- * @note   è¿‡ç¨‹ä¸­å“åº”é€€å‡ºäº‹ä»¶
+ * @brief  ¶Ô±ÈÒ»¸öÖ¸ÎÆ»òÕß×¢²áÒ»¸öÐÂµÄµ½Ö¸ÎÆ¿â
+ * @note   ¹ý³ÌÖÐÏìÓ¦ÍË³öÊÂ¼þ
  */
 Opera_getFinger::Opera_getFinger(STP_KeyMat& kb, bool isCheck = true)
     : Opera(2)
     , _isCheck(isCheck)
 {
+    STP_LCD::clear();
     keymat = &kb;
 }
 bool Opera_getFinger::init()
 {
     uint8_t error = GR307_Init();
+    STP_LCD::clear();
     if (error != 0) {
         ErrorCode = DRIVER_Error;
         ErrorStr = GR307_getErrorMsg(error);
@@ -82,6 +87,7 @@ bool Opera_getFinger::init()
 }
 bool Opera_getFinger::deinit()
 {
+    STP_LCD::clear();
     return true;
 }
 bool Opera_getFinger::exitCheck()
@@ -96,6 +102,7 @@ bool Opera_getFinger::exitCheck()
 bool Opera_getFinger::loop()
 {
     uint16_t id;
+    STP_LCD::setTitle("Çë°´ÏÂÊÖÖ¸");
     while (1) {
         if (HAL_GPIO_ReadPin(R307_INT_GPIO_Port, R307_INT_Pin) == GPIO_PIN_RESET) {
             uint8_t error = 0;
@@ -110,6 +117,9 @@ bool Opera_getFinger::loop()
                 return false;
             }
             memcpy(ans, &id, 2);
+            STP_LCD::showMessage("OK!ËÉ¿ªÊÖÖ¸");
+            while (HAL_GPIO_ReadPin(R307_INT_GPIO_Port, R307_INT_Pin) == GPIO_PIN_RESET)
+                ;
             return true;
         }
         if (exitCheck()) {
@@ -121,18 +131,34 @@ bool Opera_getFinger::loop()
 Opera_getUsrKey::Opera_getUsrKey(STP_KeyMat& kb, enum getMode mode)
     : Opera((int)mode)
     , _mode(mode)
-    , maxNum((int)mode)
 {
     keymat = &kb;
     pos = 0;
+    if (_mode != getRoomID)
+        maxNum = 6;
+    else
+        maxNum = 4;
 }
 bool Opera_getUsrKey::init()
 {
     memset(ans, 0, maxNum);
+    STP_LCD::clear();
+    switch (_mode) {
+    case Opera_getUsrKey::getPassword: {
+        STP_LCD::setTitle("ÇëÊäÈëÃÜÂë");
+    } break;
+    case Opera_getUsrKey::getTime: {
+        STP_LCD::setTitle("ÇëÊäÈëÊ±¼ä(hhmmss");
+    } break;
+    case Opera_getUsrKey::getRoomID: {
+        STP_LCD::setTitle("ÇëÊäÈë·¿¼äºÅ(aabb)");
+    } break;
+    }
     return true;
 }
 bool Opera_getUsrKey::deinit()
 {
+    STP_LCD::showNum("");
     return true;
 }
 bool Opera_getUsrKey::exitCheck()
@@ -190,8 +216,14 @@ bool Opera_getUsrKey::loop()
                 ans[pos++] = '9';
             } else if (keymat->isPress(STP_KeyMat::KEY_ID_LEFT)) {
                 if (pos > 0) {
-                    ans[pos--] = '\0';
+                    ans[--pos] = '\0';
                 }
+            }
+            ans[pos] = '\0';
+            if (_mode != getPassword) {
+                STP_LCD::showNum((const char*)ans);
+            } else {
+                STP_LCD::showNum(STP_LCD::passwordLen(pos));
             }
             while (keymat->scan()) {
                 if (exitCheck())

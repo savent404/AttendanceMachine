@@ -6,6 +6,7 @@
 #include "GR307.h"
 #include "STP_Bell.hpp"
 #include "STP_Keymat.hpp"
+#include "STP_LCD.hpp"
 #include "STP_RTC.hpp"
 #include "STP_Server.hpp"
 
@@ -84,9 +85,9 @@ private:
 class Opera_getUsrKey : public Opera {
 public:
     enum getMode {
-        getPassword = 6,
-        getTime = 6,
-        getRoomID = 4
+        getPassword = 0,
+        getTime = 1,
+        getRoomID = 2
     };
     Opera_getUsrKey(STP_KeyMat& kb, enum getMode mode);
     virtual bool init();

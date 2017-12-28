@@ -5,26 +5,26 @@ static STP_KeyMat* keyboard;
 static STP_RTC* rtc;
 
 /**
- * @brief  鑾峰彇RFID鐨勫瓙娴佺▼
- * @param  isRegist:true 娉ㄥ唽娴佺▼锛屽惁鍒欎负鐧诲叆娴佺▼
+ * @brief  获取RFID的子流程
+ * @param  isRegist:true 注册流程，否则为登入流程
  */
 static bool NFC_Handle(bool isRegist);
 
 /**
- * @brief  鑾峰彇FingerPrint鐨勫瓙娴佺▼
- * @param  isRegist:true 娉ㄥ唽娴佺▼锛屽惁鍒欎负鐧诲叆娴佺▼
+ * @brief  获取FingerPrint的子流程
+ * @param  isRegist:true 注册流程，否则为登入流程
  */
 static bool Finger_Handle(bool isRegist);
 
 /**
- * @brief  鑾峰彇key鐨勫瓙娴佺▼
- * @param  isRegist:true 娉ㄥ唽娴佺▼锛屽惁鍒欎负鐧诲叆娴佺▼
+ * @brief  获取key的子流程
+ * @param  isRegist:true 注册流程，否则为登入流程
  */
 static bool Key_Handle(bool isRegist);
 
 /*********************************************
  * @name   OP_Handle
- * @brief  鎿嶄綔鎵ц瀹炰綋
+ * @brief  操作执行实体
  */
 void OP_Handle(void)
 {
@@ -43,19 +43,10 @@ void OP_Handle(void)
         Regist = 1
     } subMode
         = Login;
+
     server->reciMessage();
-    static bool init = false;
-    
-    if (init) {
-      DB_Sheet *sheet = new DB_Sheet(DB_Sheet::Sector_1);
-      sheet->clear();
-      sheet->writeBack();
-      delete sheet;
-      //GR307_Clear();
-    }
-    goto DEBUG_TAG;
+
     // Setting the RTC parameter
-    // TODO: GUI interface
     op = new Opera_getUsrKey(*keyboard, Opera_getUsrKey::getTime);
     op->init();
     do {
@@ -63,32 +54,61 @@ void OP_Handle(void)
     } while (op->getResCode() != Opera::OK);
     op->deinit();
     {
-      char buffer[3*3];
-      memcpy(buffer, op->getAns(), 2);
-      memcpy(buffer + 3, op->getAns() + 2, 2);
-      memcpy(buffer + 6, op->getAns() + 4, 2);
-      buffer[2] = 0, buffer[5] = 0, buffer[8] = 0;
-      uint8_t h, m, s;
-      h = atoi(buffer);
-      m = atoi(buffer+3);
-      s = atoi(buffer+6);
-      rtc->setTime(h, m, s);
+        char buffer[3 * 3];
+        memcpy(buffer, op->getAns(), 2);
+        memcpy(buffer + 3, op->getAns() + 2, 2);
+        memcpy(buffer + 6, op->getAns() + 4, 2);
+        buffer[2] = 0, buffer[5] = 0, buffer[8] = 0;
+        uint8_t h, m, s;
+        h = atoi(buffer);
+        m = atoi(buffer + 3);
+        s = atoi(buffer + 6);
+        rtc->setTime(h, m, s);
     }
     delete op;
 
     // Goto welcome interface, waitting for "0 + down" and manager password
-    // TODO: GUI interface
-    op = new Opera_getUsrKey(*keyboard, Opera_getUsrKey::getPassword);
-    op->init();
-    do {
-        op->loop();
-    } while (op->getResCode() != Opera::OK && DB_Sheet::checkPassword(op->getAns()));
-    op->deinit();
-    delete op;
-    DEBUG_TAG:
+    while (1) {
+        static uint8_t sec = 0;
+        static bool refresh = true;
+        uint8_t h, m, s;
+        if (refresh) {
+            refresh = false;
+            STP_LCD::send(LCD_WELCOME, strlen(LCD_WELCOME));
+        }
+        rtc->getTime(h, m, s);
+        if (sec != s) {
+            sec = s;
+            STP_LCD::showTime(h, m, s);
+        }
+        if (keyboard->isPress(STP_KeyMat::KEY_ID_0) && keyboard->isPress(STP_KeyMat::KEY_ID_DOWN)) {
+            op = new Opera_getUsrKey(*keyboard, Opera_getUsrKey::getPassword);
+            op->init();
+            while (keyboard->scan())
+                ;
+            do {
+                op->loop();
+            } while (op->getResCode() != Opera::OK && DB_Sheet::checkPassword(op->getAns()));
+            op->deinit();
+            if (DB_Sheet::checkPassword(op->getAns()) == false) {
+                delete op;
+                while (keyboard->scan())
+                    ;
+                refresh = true;
+                continue;
+            }
+            delete op;
+            while (keyboard->scan())
+                ;
+            break;
+        }
+    }
+
     while (1) {
         // Choose Mode
-        // TODO: GUI interface
+        STP_LCD::clear();
+        STP_LCD::showMessage("选择输入模式(0,1,2)");
+    CHOOSE_MODE:
         if (keyboard->isPress(STP_KeyMat::KEY_ID_0)) {
             Mode = OPFinger;
         } else if (keyboard->isPress(STP_KeyMat::KEY_ID_1)) {
@@ -96,13 +116,15 @@ void OP_Handle(void)
         } else if (keyboard->isPress(STP_KeyMat::KEY_ID_2)) {
             Mode = OPKey;
         } else {
-            continue;
+            goto CHOOSE_MODE;
         }
         while (keyboard->scan())
             ;
-    CHOOSE_SUBMODE:
         // Choose submode
-        // TODO: GUI interface
+    CHOOSE_SUBMODE_STRING:
+        STP_LCD::clear();
+        STP_LCD::showMessage("选择输入模式(0,1)");
+    CHOOSE_SUBMODE:
         if (keyboard->isPress(STP_KeyMat::KEY_ID_0)) {
             subMode = Login;
         } else if (keyboard->isPress(STP_KeyMat::KEY_ID_1)) {
@@ -120,7 +142,7 @@ void OP_Handle(void)
             if (subMode == Login) {
                 goto GOTO_HANDLE;
             } else {
-                goto CHOOSE_SUBMODE;
+                goto CHOOSE_SUBMODE_STRING;
             }
         }
         case OPNFC: {
@@ -128,7 +150,7 @@ void OP_Handle(void)
             if (subMode == Login) {
                 goto GOTO_HANDLE;
             } else {
-                goto CHOOSE_SUBMODE;
+                goto CHOOSE_SUBMODE_STRING;
             }
         }
         case OPKey: {
@@ -136,7 +158,7 @@ void OP_Handle(void)
             if (subMode == Login) {
                 goto GOTO_HANDLE;
             } else {
-                goto CHOOSE_SUBMODE;
+                goto CHOOSE_SUBMODE_STRING;
             }
         }
         default:
@@ -161,7 +183,8 @@ static bool NFC_Handle(bool isRegist)
         get_key->loop();
         get_key->deinit();
         if (get_key->getResCode() != Opera::OK) {
-            // TODO:Output err message
+            STP_LCD::showMessage(get_key->getErrorString());
+            HAL_Delay(1000);
             goto RETURN_FALSE_NFC;
         }
         room_id->overWrite(get_key->getAns());
@@ -169,14 +192,17 @@ static bool NFC_Handle(bool isRegist)
 
     // Then wait for RFID
     if (get_nfc->init() == false) {
-      // TODO: Output err string
-      get_nfc->getErrorString();
-      goto RETURN_FALSE_NFC;
+        // Output err string
+        STP_LCD::showMessage(get_nfc->getErrorString());
+        HAL_Delay(2000);
+        goto RETURN_FALSE_NFC;
     }
     get_nfc->loop();
     get_nfc->deinit();
     if (get_key->getResCode() != Opera::OK && get_key->getResCode() != Opera::USR_Cancel) {
-        // TODO: output err message
+        // output err message
+        STP_LCD::showMessage(get_nfc->getErrorString());
+        HAL_Delay(1000);
         goto RETURN_FALSE_NFC;
     } else if (get_key->getResCode() == Opera::USR_Cancel) {
         goto RETURN_FALSE_NFC;
@@ -197,7 +223,8 @@ static bool NFC_Handle(bool isRegist)
         }
         // if found same RoomID in sheet and its RFID is exited, while this sheet is stilling alive.
         if (node != NULL) {
-            // TODO: Warnning if usr wnna replace the ID
+            // Warnning if usr wnna replace the ID
+            STP_LCD::showMessage("数据已存在，替换需输入管理员密码");
             get_password->init();
             do {
                 get_password->loop();
@@ -208,22 +235,29 @@ static bool NFC_Handle(bool isRegist)
                 ;
             } else {
                 delete sheet;
+                STP_LCD::showMessage("用户取消");
                 goto RETURN_FALSE_NFC;
             }
 
-            // TODO: Working...
+            // Working...
+            STP_LCD::showNum((const char*)node->rid.data(), 4);
+            STP_LCD::showMessage("Working....");
             node->rfid.overWrite(nfc_data->data());
             sheet->writeBack(true);
             delete sheet;
+            HAL_Delay(1000);
         } else {
             DB_Usr usr;
-            // TODO: Working...
+            // Working...
+            STP_LCD::showNum((const char*)room_id->data(), 4);
+            STP_LCD::showMessage("Working...");
             sheet = new DB_Sheet(DB_Sheet::Sector_1);
             usr.rid.overWrite(room_id->data());
             usr.rfid.overWrite(nfc_data->data());
             sheet->add(usr);
             sheet->writeBack();
             delete sheet;
+            HAL_Delay(1000);
         }
 
         // Log-in mode
@@ -235,13 +269,18 @@ static bool NFC_Handle(bool isRegist)
             node = sheet->search(*nfc_data);
             if (node != NULL) {
                 // TODO: send message to slaver
+                STP_LCD::showNum((const char*)node->rid.data(), 4);
+                STP_LCD::showMessage("Working....");
                 delete sheet;
+                HAL_Delay(1000);
                 break;
             }
             delete sheet;
         }
         if (node == NULL) {
-            // TODO: Not match message
+            // Not match message
+            STP_LCD::showMessage("未找到该用户");
+            HAL_Delay(2000);
             goto RETURN_FALSE_NFC;
         }
     }
@@ -278,7 +317,11 @@ static bool Finger_Handle(bool isRegist)
         get_key->loop();
         get_key->deinit();
         if (get_key->getResCode() != Opera::OK) {
-            // TODO:Output err message
+            STP_LCD::showMessage(get_key->getErrorString());
+            while (keyboard->isPress(STP_KeyMat::KEY_ID_NO))
+                ;
+            while (keyboard->scan())
+                ;
             goto RETURN_FALSE_FINGER;
         }
         room_id->overWrite(get_key->getAns());
@@ -287,15 +330,24 @@ static bool Finger_Handle(bool isRegist)
     // Wait for Fingerprints
     get_finger->init();
     for (int i = 0; i < ((isRegist == true) ? 5 : 1);) {
-        // TODO: Output sequence of fingers
+        if (isRegist) {
+            char buffer[2] = { 0x00, 0x00 };
+            buffer[0] = '1' + i;
+            STP_LCD::showMessage(buffer);
+        } else {
+            STP_LCD::showMessage("");
+        }
         get_finger->loop();
         if (get_finger->getResCode() == Opera::USR_Cancel) {
             get_finger->deinit();
+            STP_LCD::showMessage("用户取消");
+            HAL_Delay(1000);
             goto RETURN_FALSE_FINGER;
         } else if (get_finger->getResCode() == Opera::OK) {
             finger_data[i++].overWrite(get_finger->getAns());
         } else {
-            // TODO: Output err message
+            STP_LCD::showMessage(get_finger->getErrorString());
+            HAL_Delay(2000);
             continue;
         }
     }
@@ -325,21 +377,27 @@ static bool Finger_Handle(bool isRegist)
         }
         // If node != NULL, sheet is still alive
         if (node != NULL) {
-            // TODO: Warnning if usr wnna replace the ID
+            // Warnning if usr wnna replace the ID
+            STP_LCD::showMessage("数据已存在，替换需输入管理员密码");
             get_password->init();
             do {
                 get_password->loop();
             } while (get_password->getResCode() != Opera::OK && get_password->getResCode() != Opera::USR_Cancel);
             get_password->deinit();
-
             if (DB_Sheet::checkPassword(get_password->getAns()) && get_password->getResCode() == Opera::OK) {
                 ;
             } else {
                 delete sheet;
+                STP_LCD::showMessage("用户取消");
+                HAL_Delay(1000);
                 goto RETURN_FALSE_FINGER;
             }
 
-            // TODO: Working...
+            // Working...
+            STP_LCD::clear();
+            STP_LCD::showNum((const char*)(node->rid.data()), 4);
+            STP_LCD::showMessage("Working....");
+            HAL_Delay(2000);
             for (int i = 0; i < 5; i++) {
                 node->rfid.overWrite(finger_data[i]);
             }
@@ -347,6 +405,10 @@ static bool Finger_Handle(bool isRegist)
             delete sheet;
         } else {
             DB_Usr usr;
+            STP_LCD::clear();
+            STP_LCD::showNum((const char*)room_id->data(), 4);
+            STP_LCD::showMessage("Working....");
+            HAL_Delay(2000);
             sheet = new DB_Sheet(DB_Sheet::Sector_1);
             for (int i = 0; i < 5; i++) {
                 usr.finger[i].overWrite(finger_data[i]);
@@ -363,12 +425,19 @@ static bool Finger_Handle(bool isRegist)
             node = sheet->search(finger_data[0]);
             if (node != NULL) {
                 // TODO: send message to slaver
+                STP_LCD::clear();
+                STP_LCD::showNum((const char*)node->rid.data(), 4);
+                STP_LCD::showMessage("Working....");
+                HAL_Delay(2000);
                 delete sheet;
                 break;
             }
             delete sheet;
         }
         if (node == NULL) {
+            STP_LCD::clear();
+            STP_LCD::showMessage("未找到该用户");
+            HAL_Delay(1000);
             goto RETURN_FALSE_FINGER;
         }
     }
@@ -380,9 +449,9 @@ static bool Finger_Handle(bool isRegist)
     return true;
 RETURN_FALSE_FINGER:
     for (int i = 0; i < 5; i++) {
-      uint8_t* buf = finger_data[i].data();
-      uint16_t id = *buf | (*(buf + 1) << 8);
-      GR307_Delete(id);
+        uint8_t* buf = finger_data[i].data();
+        uint16_t id = *buf | (*(buf + 1) << 8);
+        GR307_Delete(id);
     }
     delete get_key;
     delete get_password;

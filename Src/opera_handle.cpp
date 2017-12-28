@@ -1,8 +1,8 @@
 #include "opera.hpp"
 
-static STP_ServerBase* server;
-static STP_KeyMat* keyboard;
-static STP_RTC* rtc;
+STP_ServerBase* server;
+STP_KeyMat* keyboard;
+STP_RTC* rtc;
 
 /**
  * @brief  获取RFID的子流程
@@ -82,6 +82,7 @@ void OP_Handle(void)
             STP_LCD::showTime(h, m, s);
         }
         if (keyboard->isPress(STP_KeyMat::KEY_ID_0) && keyboard->isPress(STP_KeyMat::KEY_ID_DOWN)) {
+            STP_LCD::clear();
             op = new Opera_getUsrKey(*keyboard, Opera_getUsrKey::getPassword);
             op->init();
             while (keyboard->scan())
@@ -215,15 +216,14 @@ static bool NFC_Handle(bool isRegist)
             sheet = new DB_Sheet((enum DB_Sheet::DB_Sector)i);
             node = sheet->search(*room_id);
             // If the roomid and its rfid is exited, we should ask for replace data
-            if (node != NULL && node->rfid.isNull() == false) {
+            if (node != NULL) {
                 break;
             }
-            node = NULL;
             delete sheet;
         }
         // if found same RoomID in sheet and its RFID is exited, while this sheet is stilling alive.
-        if (node != NULL) {
-            // Warnning if usr wnna replace the ID
+        if (node != NULL && node->rfid.isNull() == false) {
+            // Warnning if usr wanna replace the ID
             STP_LCD::showMessage("数据已存在，替换需输入管理员密码");
             get_password->init();
             do {
@@ -239,6 +239,14 @@ static bool NFC_Handle(bool isRegist)
                 goto RETURN_FALSE_NFC;
             }
 
+            // Working...
+            STP_LCD::showNum((const char*)node->rid.data(), 4);
+            STP_LCD::showMessage("Working....");
+            node->rfid.overWrite(nfc_data->data());
+            sheet->writeBack(true);
+            delete sheet;
+            HAL_Delay(1000);
+        } else if (node != NULL) {
             // Working...
             STP_LCD::showNum((const char*)node->rid.data(), 4);
             STP_LCD::showMessage("Working....");
@@ -309,6 +317,7 @@ static bool Finger_Handle(bool isRegist)
     DB_Base* finger_data = new DB_FingerPrint[5];
     DB_Base* room_id = new DB_RoomID;
     DB_Sheet* sheet;
+    bool isNull = true;
     std::list<DB_Usr>::iterator node;
 
     // If is Regist mode, input RoomID first
@@ -318,10 +327,7 @@ static bool Finger_Handle(bool isRegist)
         get_key->deinit();
         if (get_key->getResCode() != Opera::OK) {
             STP_LCD::showMessage(get_key->getErrorString());
-            while (keyboard->isPress(STP_KeyMat::KEY_ID_NO))
-                ;
-            while (keyboard->scan())
-                ;
+            HAL_Delay(1000);
             goto RETURN_FALSE_FINGER;
         }
         room_id->overWrite(get_key->getAns());
@@ -361,7 +367,6 @@ static bool Finger_Handle(bool isRegist)
 
             // if RoomID and Fingerprint is exited(any Fingerprint is not null)
             if (node != NULL) {
-                bool isNull = true;
                 for (int i = 0; i < 5; i++) {
                     if (node->finger[i].isNull() == false) {
                         isNull = false;
@@ -372,11 +377,10 @@ static bool Finger_Handle(bool isRegist)
                     break;
                 }
             }
-            node = NULL;
             delete sheet;
         }
         // If node != NULL, sheet is still alive
-        if (node != NULL) {
+        if (node != NULL && isNull == false) {
             // Warnning if usr wnna replace the ID
             STP_LCD::showMessage("数据已存在，替换需输入管理员密码");
             get_password->init();
@@ -393,6 +397,17 @@ static bool Finger_Handle(bool isRegist)
                 goto RETURN_FALSE_FINGER;
             }
 
+            // Working...
+            STP_LCD::clear();
+            STP_LCD::showNum((const char*)(node->rid.data()), 4);
+            STP_LCD::showMessage("Working....");
+            HAL_Delay(2000);
+            for (int i = 0; i < 5; i++) {
+                node->rfid.overWrite(finger_data[i]);
+            }
+            sheet->writeBack(true);
+            delete sheet;
+        } else if (node != NULL) {
             // Working...
             STP_LCD::clear();
             STP_LCD::showNum((const char*)(node->rid.data()), 4);
@@ -463,5 +478,119 @@ RETURN_FALSE_FINGER:
 
 bool Key_Handle(bool isRegist)
 {
+    Opera* get_key = new Opera_getUsrKey(*keyboard, Opera_getUsrKey::getRoomID);
+    Opera* get_password = new Opera_getUsrKey(*keyboard, Opera_getUsrKey::getPassword);
+    DB_Base* room_id = new DB_RoomID;
+    DB_Base* password = new DB_Password;
+    DB_Sheet* sheet;
+    std::list<DB_Usr>::iterator node;
+
+    // Input room id first
+    get_key->init();
+    get_key->loop();
+    if (get_key->getResCode() != Opera::OK) {
+        STP_LCD::showMessage(get_key->getErrorString());
+        HAL_Delay(1000);
+        goto RETURN_FALSE_KEY;
+    }
+    room_id->overWrite(get_key->getAns());
+
+    // Input room's passowrd
+    STP_LCD::showMessage("请输入房间密码");
+    get_password->init();
+    do {
+        get_password->loop();
+    } while (get_password->getResCode() != Opera::OK && get_password->getResCode() != Opera::USR_Cancel);
+    get_password->deinit();
+
+    // if it's register, check if roomid and passowrd is exit
+    if (isRegist) {
+        for (int i = 1; i <= 3; i++) {
+            sheet = new DB_Sheet((enum DB_Sheet::DB_Sector)i);
+            node = sheet->search(*room_id);
+            if (node != NULL) {
+                break;
+            }
+            delete sheet;
+        }
+
+        // if found a exit data, ask for manager password to replace it
+        if (node != NULL && node->pid.isNull() == false) {
+            // Warnning if usr wanna replace the ID
+            STP_LCD::showMessage("数据已存在，替换需输入管理员密码");
+            get_password->init();
+            do {
+                get_password->loop();
+            } while (get_password->getResCode() != Opera::OK && get_password->getResCode() != Opera::USR_Cancel);
+            get_password->deinit();
+
+            if (DB_Sheet::checkPassword(get_password->getAns()) && get_password->getResCode() == Opera::OK) {
+                ;
+            } else {
+                delete sheet;
+                STP_LCD::showMessage("用户取消");
+                goto RETURN_FALSE_KEY;
+            }
+
+            // Working...
+            STP_LCD::showNum((const char*)node->rid.data(), 4);
+            STP_LCD::showMessage("Working....");
+            node->pid.overWrite(*password);
+            sheet->writeBack(true);
+            delete sheet;
+            HAL_Delay(1000);
+        } else if (node != NULL) {
+            // Working...
+            STP_LCD::showNum((const char*)node->rid.data(), 4);
+            STP_LCD::showMessage("Working....");
+            node->pid.overWrite(*password);
+            sheet->writeBack(true);
+            delete sheet;
+            HAL_Delay(1000);
+        } else {
+            // Working...
+            DB_Usr usr;
+            STP_LCD::showNum((const char*)room_id->data(), 4);
+            STP_LCD::showMessage("Working...");
+            sheet = new DB_Sheet(DB_Sheet::Sector_1);
+            usr.rid.overWrite(room_id->data());
+            usr.pid.overWrite(password->data());
+            sheet->add(usr);
+            sheet->writeBack();
+            delete sheet;
+            HAL_Delay(1000);
+        }
+    } else {
+        for (int i = 1; i <= 3; i++) {
+            sheet = new DB_Sheet((enum DB_Sheet::DB_Sector)i);
+            node = sheet->search(*room_id);
+            if (node != NULL && node->pid == *password) {
+                // TODO: send message to slaver
+                STP_LCD::showNum((const char*)node->rid.data(), 4);
+                STP_LCD::showMessage("Working....");
+                delete sheet;
+                HAL_Delay(1000);
+                break;
+            }
+            delete sheet;
+        }
+        if (node == NULL) {
+            // Not match message
+            STP_LCD::showMessage("未找到该用户");
+            HAL_Delay(2000);
+            goto RETURN_FALSE_KEY;
+        }
+    }
+
+    delete get_key;
+    delete get_password;
+    delete room_id;
+    delete password;
     return true;
+RETURN_FALSE_KEY:
+    delete get_key;
+    delete get_password;
+    delete room_id;
+    delete password;
+    return false;
 }

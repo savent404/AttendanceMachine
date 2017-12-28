@@ -1,4 +1,23 @@
 #include "opera.hpp"
+
+extern STP_RTC* rtc;
+static void switchTitle(const char* originTitle)
+{
+    static uint8_t sec = 0;
+    uint8_t h, m, s;
+    char buffer[10];
+    rtc->getTime(h, m, s);
+    if (s != sec) {
+        sec = s;
+        if ((s % 4) < 2)
+            STP_LCD::setTitle(originTitle);
+        else {
+            sprintf(buffer, "%02d:%02d:%02d", h, m, s);
+            STP_LCD::setTitle(buffer);
+        }
+    }
+}
+
 /*********************************************
  * @name   Opera_getNFC
  * @brief  获取4字节的RFID
@@ -44,13 +63,13 @@ bool Opera_getNFC::exitCheck()
         ErrorStr = "Usr Cancel";
         return true;
     }
+    switchTitle("请刷卡");
     return false;
 }
 bool Opera_getNFC::loop()
 {
     uint8_t uid[10];
     uint8_t uidLen;
-    STP_LCD::setTitle("请刷卡");
     while (1) {
         if (nfc->readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLen)) {
             memcpy(ans, uid, 4);
@@ -77,7 +96,6 @@ Opera_getFinger::Opera_getFinger(STP_KeyMat& kb, bool isCheck = true)
 bool Opera_getFinger::init()
 {
     uint8_t error = GR307_Init();
-    STP_LCD::clear();
     if (error != 0) {
         ErrorCode = DRIVER_Error;
         ErrorStr = GR307_getErrorMsg(error);
@@ -97,12 +115,12 @@ bool Opera_getFinger::exitCheck()
         ErrorStr = "Usr Cancel";
         return true;
     }
+    switchTitle("请按下手指");
     return false;
 }
 bool Opera_getFinger::loop()
 {
     uint16_t id;
-    STP_LCD::setTitle("请按下手指");
     while (1) {
         if (HAL_GPIO_ReadPin(R307_INT_GPIO_Port, R307_INT_Pin) == GPIO_PIN_RESET) {
             uint8_t error = 0;
@@ -142,18 +160,10 @@ Opera_getUsrKey::Opera_getUsrKey(STP_KeyMat& kb, enum getMode mode)
 bool Opera_getUsrKey::init()
 {
     memset(ans, 0, maxNum);
-    STP_LCD::clear();
-    switch (_mode) {
-    case Opera_getUsrKey::getPassword: {
+    if (_mode == getTime)
+        STP_LCD::setTitle("请输入时间(hhmmss)");
+    if (_mode == getPassword)
         STP_LCD::setTitle("请输入密码");
-    } break;
-    case Opera_getUsrKey::getTime: {
-        STP_LCD::setTitle("请输入时间(hhmmss");
-    } break;
-    case Opera_getUsrKey::getRoomID: {
-        STP_LCD::setTitle("请输入房间号(aabb)");
-    } break;
-    }
     return true;
 }
 bool Opera_getUsrKey::deinit()
@@ -186,6 +196,15 @@ bool Opera_getUsrKey::exitCheck()
         else
             ErrorStr = "Please input right number of char";
         return true;
+    }
+    switch (_mode) {
+    case Opera_getUsrKey::getPassword: {
+    } break;
+    case Opera_getUsrKey::getTime: {
+    } break;
+    case Opera_getUsrKey::getRoomID: {
+        switchTitle("请输入房间号");
+    } break;
     }
     return false;
 }

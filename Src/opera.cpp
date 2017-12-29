@@ -20,8 +20,8 @@ static void switchTitle(const char* originTitle)
 
 /*********************************************
  * @name   Opera_getNFC
- * @brief  »ñÈ¡4×Ö½ÚµÄRFID
- * @note   ¹ı³ÌÖĞÏìÓ¦ÍË³öÊÂ¼ş
+ * @brief  è·å–4å­—èŠ‚çš„RFID
+ * @note   è¿‡ç¨‹ä¸­å“åº”é€€å‡ºäº‹ä»¶
  */
 Opera_getNFC::Opera_getNFC(STP_KeyMat& kb)
     : Opera(4)
@@ -63,7 +63,7 @@ bool Opera_getNFC::exitCheck()
         ErrorStr = "Usr Cancel";
         return true;
     }
-    switchTitle("ÇëË¢¿¨");
+    switchTitle(TEXT_NFC_001);
     return false;
 }
 bool Opera_getNFC::loop()
@@ -83,8 +83,8 @@ bool Opera_getNFC::loop()
 
 /*********************************************
  * @name   Opera_getFinger
- * @brief  ¶Ô±ÈÒ»¸öÖ¸ÎÆ»òÕß×¢²áÒ»¸öĞÂµÄµ½Ö¸ÎÆ¿â
- * @note   ¹ı³ÌÖĞÏìÓ¦ÍË³öÊÂ¼ş
+ * @brief  å¯¹æ¯”ä¸€ä¸ªæŒ‡çº¹æˆ–è€…æ³¨å†Œä¸€ä¸ªæ–°çš„åˆ°æŒ‡çº¹åº“
+ * @note   è¿‡ç¨‹ä¸­å“åº”é€€å‡ºäº‹ä»¶
  */
 Opera_getFinger::Opera_getFinger(STP_KeyMat& kb, bool isCheck = true)
     : Opera(2)
@@ -115,7 +115,7 @@ bool Opera_getFinger::exitCheck()
         ErrorStr = "Usr Cancel";
         return true;
     }
-    switchTitle("Çë°´ÏÂÊÖÖ¸");
+    switchTitle(TEST_FINGER_001);
     return false;
 }
 bool Opera_getFinger::loop()
@@ -135,7 +135,7 @@ bool Opera_getFinger::loop()
                 return false;
             }
             memcpy(ans, &id, 2);
-            STP_LCD::showMessage("OK!ËÉ¿ªÊÖÖ¸");
+            STP_LCD::showMessage(TEXT_FINGER_002);
             while (HAL_GPIO_ReadPin(R307_INT_GPIO_Port, R307_INT_Pin) == GPIO_PIN_RESET)
                 ;
             return true;
@@ -161,9 +161,9 @@ bool Opera_getUsrKey::init()
 {
     memset(ans, 0, maxNum);
     if (_mode == getTime)
-        STP_LCD::setTitle("ÇëÊäÈëÊ±¼ä(hhmmss)");
+        STP_LCD::setTitle(TEXT_TIME);
     if (_mode == getPassword)
-        STP_LCD::setTitle("ÇëÊäÈëÃÜÂë");
+        STP_LCD::setTitle(TEXT_PASSWORD);
     return true;
 }
 bool Opera_getUsrKey::deinit()
@@ -203,7 +203,7 @@ bool Opera_getUsrKey::exitCheck()
     case Opera_getUsrKey::getTime: {
     } break;
     case Opera_getUsrKey::getRoomID: {
-        switchTitle("ÇëÊäÈë·¿¼äºÅ");
+        switchTitle(TEXT_ROOMID);
     } break;
     }
     return false;

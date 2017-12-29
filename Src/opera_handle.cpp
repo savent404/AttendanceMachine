@@ -5,26 +5,26 @@ STP_KeyMat* keyboard;
 STP_RTC* rtc;
 
 /**
- * @brief  获取RFID的子流程
- * @param  isRegist:true 注册流程，否则为登入流程
+ * @brief  鑾峰彇RFID鐨勫瓙娴佺▼
+ * @param  isRegist:true 娉ㄥ唽娴佺▼锛屽惁鍒欎负鐧诲叆娴佺▼
  */
 static bool NFC_Handle(bool isRegist);
 
 /**
- * @brief  获取FingerPrint的子流程
- * @param  isRegist:true 注册流程，否则为登入流程
+ * @brief  鑾峰彇FingerPrint鐨勫瓙娴佺▼
+ * @param  isRegist:true 娉ㄥ唽娴佺▼锛屽惁鍒欎负鐧诲叆娴佺▼
  */
 static bool Finger_Handle(bool isRegist);
 
 /**
- * @brief  获取key的子流程
- * @param  isRegist:true 注册流程，否则为登入流程
+ * @brief  鑾峰彇key鐨勫瓙娴佺▼
+ * @param  isRegist:true 娉ㄥ唽娴佺▼锛屽惁鍒欎负鐧诲叆娴佺▼
  */
 static bool Key_Handle(bool isRegist);
 
 /*********************************************
  * @name   OP_Handle
- * @brief  操作执行实体
+ * @brief  鎿嶄綔鎵ц瀹炰綋
  */
 void OP_Handle(void)
 {
@@ -108,7 +108,7 @@ void OP_Handle(void)
     while (1) {
         // Choose Mode
         STP_LCD::clear();
-        STP_LCD::showMessage("选择输入模式(0,1,2)");
+        STP_LCD::showMessage(TEXT_CHOOSE_MODE_1);
     CHOOSE_MODE:
         if (keyboard->isPress(STP_KeyMat::KEY_ID_0)) {
             Mode = OPFinger;
@@ -124,7 +124,7 @@ void OP_Handle(void)
         // Choose submode
     CHOOSE_SUBMODE_STRING:
         STP_LCD::clear();
-        STP_LCD::showMessage("选择输入模式(0,1)");
+        STP_LCD::showMessage(TEXT_CHOOSE_MODE_2);
     CHOOSE_SUBMODE:
         if (keyboard->isPress(STP_KeyMat::KEY_ID_0)) {
             subMode = Login;
@@ -224,7 +224,7 @@ static bool NFC_Handle(bool isRegist)
         // if found same RoomID in sheet and its RFID is exited, while this sheet is stilling alive.
         if (node != NULL && node->rfid.isNull() == false) {
             // Warnning if usr wanna replace the ID
-            STP_LCD::showMessage("数据已存在，替换需输入管理员密码");
+            STP_LCD::showMessage(TEXT_REPLACE);
             get_password->init();
             do {
                 get_password->loop();
@@ -235,7 +235,7 @@ static bool NFC_Handle(bool isRegist)
                 ;
             } else {
                 delete sheet;
-                STP_LCD::showMessage("用户取消");
+                STP_LCD::showMessage(TEXT_CANCEL);
                 goto RETURN_FALSE_NFC;
             }
 
@@ -287,7 +287,7 @@ static bool NFC_Handle(bool isRegist)
         }
         if (node == NULL) {
             // Not match message
-            STP_LCD::showMessage("未找到该用户");
+            STP_LCD::showMessage(TEXT_UNKNOWUSER);
             HAL_Delay(2000);
             goto RETURN_FALSE_NFC;
         }
@@ -346,7 +346,7 @@ static bool Finger_Handle(bool isRegist)
         get_finger->loop();
         if (get_finger->getResCode() == Opera::USR_Cancel) {
             get_finger->deinit();
-            STP_LCD::showMessage("用户取消");
+            STP_LCD::showMessage(TEXT_CANCEL);
             HAL_Delay(1000);
             goto RETURN_FALSE_FINGER;
         } else if (get_finger->getResCode() == Opera::OK) {
@@ -382,7 +382,7 @@ static bool Finger_Handle(bool isRegist)
         // If node != NULL, sheet is still alive
         if (node != NULL && isNull == false) {
             // Warnning if usr wnna replace the ID
-            STP_LCD::showMessage("数据已存在，替换需输入管理员密码");
+            STP_LCD::showMessage(TEXT_REPLACE);
             get_password->init();
             do {
                 get_password->loop();
@@ -392,7 +392,7 @@ static bool Finger_Handle(bool isRegist)
                 ;
             } else {
                 delete sheet;
-                STP_LCD::showMessage("用户取消");
+                STP_LCD::showMessage(TEXT_CANCEL);
                 HAL_Delay(1000);
                 goto RETURN_FALSE_FINGER;
             }
@@ -451,7 +451,7 @@ static bool Finger_Handle(bool isRegist)
         }
         if (node == NULL) {
             STP_LCD::clear();
-            STP_LCD::showMessage("未找到该用户");
+            STP_LCD::showMessage(TEXT_UNKNOWUSER);
             HAL_Delay(1000);
             goto RETURN_FALSE_FINGER;
         }
@@ -496,7 +496,7 @@ bool Key_Handle(bool isRegist)
     room_id->overWrite(get_key->getAns());
 
     // Input room's passowrd
-    STP_LCD::showMessage("请输入房间密码");
+    STP_LCD::showMessage(TEXT_ROOMID);
     get_password->init();
     do {
         get_password->loop();
@@ -517,7 +517,7 @@ bool Key_Handle(bool isRegist)
         // if found a exit data, ask for manager password to replace it
         if (node != NULL && node->pid.isNull() == false) {
             // Warnning if usr wanna replace the ID
-            STP_LCD::showMessage("数据已存在，替换需输入管理员密码");
+            STP_LCD::showMessage(TEXT_REPLACE);
             get_password->init();
             do {
                 get_password->loop();
@@ -528,7 +528,7 @@ bool Key_Handle(bool isRegist)
                 ;
             } else {
                 delete sheet;
-                STP_LCD::showMessage("用户取消");
+                STP_LCD::showMessage(TEXT_CANCEL);
                 goto RETURN_FALSE_KEY;
             }
 
@@ -576,7 +576,7 @@ bool Key_Handle(bool isRegist)
         }
         if (node == NULL) {
             // Not match message
-            STP_LCD::showMessage("未找到该用户");
+            STP_LCD::showMessage(TEXT_UNKNOWUSER);
             HAL_Delay(2000);
             goto RETURN_FALSE_KEY;
         }
@@ -594,3 +594,4 @@ RETURN_FALSE_KEY:
     delete password;
     return false;
 }
+

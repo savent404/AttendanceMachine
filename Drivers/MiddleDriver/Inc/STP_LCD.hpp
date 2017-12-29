@@ -6,8 +6,20 @@
 
 #define LCD_UART (&huart3)
 
-#define LCD_WELCOME "CLS(0);DS32(234,73,'上海xxxx设备制造有限公司',7,0);DS48(215,335,'智能家居，安全出行',7,0);"
 #define LCD_CLEAR "CLS(0);"
+char LCD_WELCOMDE[];
+char LCD_WELCOME[];
+char TEXT_NFC_001[];
+char TEST_FINGER_001[];
+char TEXT_FINGER_002[];
+char TEXT_TIME[];
+char TEXT_PASSWORD[];
+char TEXT_ROOMID[];
+char TEXT_UNKNOWUSER[];
+char TEXT_REPLACE[];
+char TEXT_CANCEL[];
+char TEXT_CHOOSE_MODE_1[];
+char TEXT_CHOOSE_MODE_2[];
 
 class STP_LCD {
 public:

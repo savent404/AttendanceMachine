@@ -26,11 +26,11 @@ bool STP_ServerBase::sendMessage(enum CMD cmd, const uint8_t* message, size_t si
     buffer[0] = START_FRAME;
     buffer[1] = (uint8_t)cmd;
     buffer[2] = (uint8_t)size;
-    buffer[3 + size] = ans;
     for (int i = 0; i < size; i++) {
         buffer[3 + i] = *message;
         ans += *message++;
     }
+    buffer[3 + size] = ans;
     return send(buffer, size + 4);
 }
 bool STP_ServerBase::reciMessage()
@@ -85,7 +85,7 @@ void STP_ServerRS485::Callback()
         uint8_t ans = recBuffer[0];
         uint8_t _ans = 0;
         for (int i = 0; i < sizeBuffer[0]; i++) {
-            _ans += sizeBuffer[i];
+            _ans += messageBuffer[i];
         }
         if (ans == _ans) {
             goto GOT_A_MESSAGE;

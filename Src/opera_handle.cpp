@@ -69,26 +69,26 @@ void OP_Handle(void)
     server->reciMessage();
 
     if (__HAL_RCC_GET_FLAG(RCC_FLAG_SFTRST) == 0) {
-    // Setting the RTC parameter
-    op = new Opera_getUsrKey(*keyboard, Opera_getUsrKey::getTime);
-    op->init();
-    do {
-        op->loop();
-    } while (op->getResCode() != Opera::OK);
-    op->deinit();
-    {
-        char buffer[3 * 3];
-        memcpy(buffer, op->getAns(), 2);
-        memcpy(buffer + 3, op->getAns() + 2, 2);
-        memcpy(buffer + 6, op->getAns() + 4, 2);
-        buffer[2] = 0, buffer[5] = 0, buffer[8] = 0;
-        uint8_t h, m, s;
-        h = atoi(buffer);
-        m = atoi(buffer + 3);
-        s = atoi(buffer + 6);
-        rtc->setTime(h, m, s);
-    }
-    delete op;
+        // Setting the RTC parameter
+        op = new Opera_getUsrKey(*keyboard, Opera_getUsrKey::getTime);
+        op->init();
+        do {
+            op->loop();
+        } while (op->getResCode() != Opera::OK);
+        op->deinit();
+        {
+            char buffer[3 * 3];
+            memcpy(buffer, op->getAns(), 2);
+            memcpy(buffer + 3, op->getAns() + 2, 2);
+            memcpy(buffer + 6, op->getAns() + 4, 2);
+            buffer[2] = 0, buffer[5] = 0, buffer[8] = 0;
+            uint8_t h, m, s;
+            h = atoi(buffer);
+            m = atoi(buffer + 3);
+            s = atoi(buffer + 6);
+            rtc->setTime(h, m, s);
+        }
+        delete op;
     }
 
     // Goto welcome interface, waitting for "0 + down" and manager password
@@ -114,16 +114,14 @@ void OP_Handle(void)
                 ;
             do {
                 op->loop();
-            } while (op->getResCode() != Opera::OK && DB_Sheet::checkPassword(op->getAns()));
+            } while ((op->getResCode() != Opera::OK && op->getResCode() != Opera::USR_Cancel) || DB_Sheet::checkPassword(op->getAns()) == false);
+
             op->deinit();
             delete op;
-            while (keyboard->scan())
-                ;
-            if (DB_Sheet::checkPassword(op->getAns()) == false) {
+            if (op->getResCode() == Opera::USR_Cancel) {
                 continue;
-            } else {
-                break;
             }
+            break;
         }
     }
 
@@ -138,6 +136,22 @@ void OP_Handle(void)
             Mode = OPNFC;
         } else if (keyboard->isPress(STP_KeyMat::KEY_ID_2)) {
             Mode = OPKey;
+        } else if (keyboard->isPress(STP_KeyMat::KEY_ID_3)) {
+          STP_LCD::showMessage("Change Root Password");
+            while (keyboard->scan())
+                ;
+            Opera* get = new Opera_getUsrKey(*keyboard, Opera_getUsrKey::getPassword);
+            do {
+              get->init();
+              get->loop();
+            } while (get->getResCode() != Opera::OK);
+            get->deinit();
+            DB_Sheet* sheet = new DB_Sheet(DB_Sheet::Sector_1);
+            sheet->changePassword(get->getAns());
+            sheet->writeBack();
+            delete sheet;
+            delete get;
+            continue;
         } else {
             goto CHOOSE_MODE;
         }
@@ -159,6 +173,7 @@ void OP_Handle(void)
             ;
     GOTO_HANDLE:
         // Goto handle
+        STP_LCD::clear();
         switch (Mode) {
         case OPFinger: {
             Finger_Handle(subMode == Login ? false : true);
@@ -282,7 +297,9 @@ static bool NFC_Handle(bool isRegist)
             HAL_Delay(1000);
             goto RETURN_FALSE_NFC;
         } else {
-            // TODO: send message to slaver
+            // send message to slaver
+            server->sendMessage(STP_ServerBase::CMD_ID_RFID, node->rid.data(), 4);
+            server->reciMessage();
             STP_LCD::showNum((const char*)node->rid.data(), 4);
             STP_LCD::showMessage("Working...");
             HAL_Delay(1000);
@@ -409,7 +426,7 @@ static bool Finger_Handle(bool isRegist)
         }
         // Working...
         STP_LCD::clear();
-        STP_LCD::showNum((const char*)(node->rid.data()), 4);
+        STP_LCD::showNum((const char*)room_id->data(), 4);
         STP_LCD::showMessage("Working....");
         sheet->writeBack(true);
         delete sheet;
@@ -430,7 +447,9 @@ static bool Finger_Handle(bool isRegist)
             HAL_Delay(1000);
             goto RETURN_FALSE_FINGER;
         } else {
-            // TODO: send message to slaver
+            // send message to slaver
+            server->sendMessage(STP_ServerBase::CMD_ID_FINGER, node->rid.data(), 4);
+            server->reciMessage();
             STP_LCD::clear();
             STP_LCD::showNum((const char*)node->rid.data(), 4);
             STP_LCD::showMessage("Working....");
@@ -476,9 +495,8 @@ bool Key_Handle(bool isRegist)
         goto RETURN_FALSE_KEY;
     }
     room_id->overWrite(get_key->getAns());
-
+    STP_LCD::clear();
     // Input room's passowrd
-    STP_LCD::showMessage(TEXT_ROOMID);
     get_password->init();
     get_password->loop();
     get_password->deinit();
@@ -487,6 +505,8 @@ bool Key_Handle(bool isRegist)
         HAL_Delay(1000);
         goto RETURN_FALSE_KEY;
     }
+    password->overWrite(get_password->getAns());
+    STP_LCD::clear();
 
     // if it's register, check if roomid and passowrd is exit
     if (isRegist) {
@@ -531,7 +551,7 @@ bool Key_Handle(bool isRegist)
             sheet->add(usr);
         }
         // Working...
-        STP_LCD::showNum((const char*)node->rid.data(), 4);
+        STP_LCD::showNum((const char*)room_id->data(), 4);
         STP_LCD::showMessage("Working....");
         sheet->writeBack(true);
         delete sheet;
@@ -554,8 +574,77 @@ bool Key_Handle(bool isRegist)
             if (node->pid == *password) {
                 // TODO: send message to slaver
                 STP_LCD::showNum((const char*)node->rid.data(), 4);
-                STP_LCD::showMessage("Working....");
-                HAL_Delay(1000);
+                STP_LCD::setTitle("Operation");
+                HAL_Delay(100);
+                STP_LCD::showMessage("udlr");
+                while (1) {
+                    static uint16_t key_status = 0;
+                    static char soutput[] = "udlr";
+                    uint16_t buf = keyboard->scan();
+                    uint16_t xbuf = key_status ^ buf;
+
+                    if (xbuf & (1 << STP_KeyMat::KEY_ID_UP)) {
+                        if (buf & (1 << STP_KeyMat::KEY_ID_UP)) {
+                            server->sendMessage(STP_ServerBase::CMD_UP_Start);
+                            soutput[0] = 'U';
+                        } else {
+                            server->sendMessage(STP_ServerBase::CMD_UP_Stop);
+                            soutput[0] = 'u';
+                        }
+                    }
+                    if (xbuf & (1 << STP_KeyMat::KEY_ID_DOWN)) {
+                        if (buf & (1 << STP_KeyMat::KEY_ID_DOWN)) {
+                            server->sendMessage(STP_ServerBase::CMD_DOWN_Start);
+                            soutput[1] = 'D';
+                        } else {
+                            server->sendMessage(STP_ServerBase::CMD_DOWN_Stop);
+                            soutput[1] = 'd';
+                        }
+                    }
+                    if (xbuf & (1 << STP_KeyMat::KEY_ID_LEFT)) {
+                        if (buf & (1 << STP_KeyMat::KEY_ID_LEFT)) {
+                            server->sendMessage(STP_ServerBase::CMD_LEFT_Start);
+                            soutput[2] = 'L';
+                        } else {
+                            server->sendMessage(STP_ServerBase::CMD_LEFT_Stop);
+                            soutput[2] = 'l';
+                        }
+                    }
+                    if (xbuf & (1 << STP_KeyMat::KEY_ID_RIGHT)) {
+                        if (buf & (1 << STP_KeyMat::KEY_ID_RIGHT)) {
+                            server->sendMessage(STP_ServerBase::CMD_RIGHT_Start);
+                            soutput[3] = 'R';
+                        } else {
+                            server->sendMessage(STP_ServerBase::CMD_RIGHT_Stop);
+                            soutput[3] = 'r';
+                        }
+                    }
+                    if (keyboard->isPress(STP_KeyMat::KEY_ID_YES)) {
+                        // release all key
+                        if (buf & (1 << STP_KeyMat::KEY_ID_UP)) {
+                            server->sendMessage(STP_ServerBase::CMD_UP_Stop);
+                        }
+                        if (buf & (1 << STP_KeyMat::KEY_ID_DOWN)) {
+                            server->sendMessage(STP_ServerBase::CMD_DOWN_Stop);
+                        }
+                        if (buf & (1 << STP_KeyMat::KEY_ID_LEFT)) {
+                            server->sendMessage(STP_ServerBase::CMD_LEFT_Stop);
+                        }
+                        if (buf & (1 << STP_KeyMat::KEY_ID_RIGHT)) {
+                            server->sendMessage(STP_ServerBase::CMD_RIGHT_Stop);
+                        }
+                        sprintf(soutput, "udlr");
+                        STP_LCD::showMessage(soutput);
+                        while (keyboard->scan())
+                            ;
+                        break;
+                    }
+                    if (xbuf & ((1 << STP_KeyMat::KEY_ID_UP) | (1 << STP_KeyMat::KEY_ID_DOWN) | (1 << STP_KeyMat::KEY_ID_LEFT) | (1 << STP_KeyMat::KEY_ID_RIGHT))) {
+                        // LCD show
+                        STP_LCD::showMessage(soutput);
+                    }
+                    key_status = buf;
+                }
             } else {
                 STP_LCD::showNum("");
                 STP_LCD::showMessage("Wrong Password");

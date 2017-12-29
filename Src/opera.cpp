@@ -147,15 +147,15 @@ bool Opera_getFinger::loop()
 }
 
 Opera_getUsrKey::Opera_getUsrKey(STP_KeyMat& kb, enum getMode mode)
-    : Opera((int)mode)
+    : Opera(6)
     , _mode(mode)
 {
     keymat = &kb;
     pos = 0;
-    if (_mode != getRoomID)
-        maxNum = 6;
-    else
+    if (_mode == getRoomID)
         maxNum = 4;
+    else
+        maxNum = 6;
 }
 bool Opera_getUsrKey::init()
 {
@@ -164,6 +164,8 @@ bool Opera_getUsrKey::init()
         STP_LCD::setTitle(TEXT_TIME);
     if (_mode == getPassword)
         STP_LCD::setTitle(TEXT_PASSWORD);
+    pos = 0;
+    memset(ans, 0, maxNum);
     return true;
 }
 bool Opera_getUsrKey::deinit()
@@ -179,6 +181,8 @@ bool Opera_getUsrKey::exitCheck()
         ErrorCode = USR_Cancel;
         ErrorStr = (const char*)TEXT_CANCEL;
         STP_LCD::showNum("");
+        memset(ans, 0, 6);
+        pos = 0;
         return true;
     } else if (keymat->isPress(STP_KeyMat::KEY_ID_YES) && pos == maxNum) {
         while (keymat->scan())
@@ -198,10 +202,11 @@ bool Opera_getUsrKey::exitCheck()
         else
             ErrorStr = "Please input right number of char";
         STP_LCD::showNum("");
-
-		// opt1:用户错误需要提示的话应return true,在上一级函数中给予提示
-		// opt2:直接在当前位置输出字符串并延时保证显示时间
-		// opt3:不显示直接继续循环
+        memset(ans, 0, 6);
+        pos = 0;
+        // opt1:用户错误需要提示的话应return true,在上一级函数中给予提示
+        // opt2:直接在当前位置输出字符串并延时保证显示时间
+        // opt3:不显示直接继续循环
         return false;
     }
 
@@ -240,7 +245,6 @@ bool Opera_getUsrKey::loop()
                     ans[--pos] = '\0';
                 }
             }
-            ans[pos] = '\0';
             if (_mode != getPassword) {
                 STP_LCD::showNum((const char*)ans);
             } else {

@@ -72,14 +72,15 @@ void OP_Handle(void)
         static uint8_t sec = 0;
         static bool refresh = true;
         uint8_t h, m, s;
-        if (refresh) {
-            refresh = false;
-            STP_LCD::send(LCD_WELCOME, strlen(LCD_WELCOME));
-        }
+
         rtc->getTime(h, m, s);
         if (sec != s) {
             sec = s;
             STP_LCD::showTime(h, m, s);
+        }
+        if (refresh) {
+            refresh = false;
+            STP_LCD::send(LCD_WELCOME, strlen(LCD_WELCOME));
         }
         if (keyboard->isPress(STP_KeyMat::KEY_ID_0) && keyboard->isPress(STP_KeyMat::KEY_ID_DOWN)) {
             STP_LCD::clear();
@@ -91,17 +92,14 @@ void OP_Handle(void)
                 op->loop();
             } while (op->getResCode() != Opera::OK && DB_Sheet::checkPassword(op->getAns()));
             op->deinit();
-            if (DB_Sheet::checkPassword(op->getAns()) == false) {
-                delete op;
-                while (keyboard->scan())
-                    ;
-                refresh = true;
-                continue;
-            }
             delete op;
             while (keyboard->scan())
                 ;
-            break;
+            if (DB_Sheet::checkPassword(op->getAns()) == false) {
+                continue;
+            } else {
+                break;
+            }
         }
     }
 
@@ -140,31 +138,21 @@ void OP_Handle(void)
         switch (Mode) {
         case OPFinger: {
             Finger_Handle(subMode == Login ? false : true);
-            if (subMode == Login) {
-                goto GOTO_HANDLE;
-            } else {
-                goto CHOOSE_SUBMODE_STRING;
-            }
         }
         case OPNFC: {
             NFC_Handle(subMode == Login ? false : true);
-            if (subMode == Login) {
-                goto GOTO_HANDLE;
-            } else {
-                goto CHOOSE_SUBMODE_STRING;
-            }
         }
         case OPKey: {
             Key_Handle(subMode == Login ? false : true);
-            if (subMode == Login) {
-                goto GOTO_HANDLE;
-            } else {
-                goto CHOOSE_SUBMODE_STRING;
-            }
         }
         default:
             continue;
         }
+        // Default option: Login->Handle, Regist->Choose sub mode then goto handle
+        if (subMode == Login)
+            goto GOTO_HANDLE;
+        else if (subMode == Regist)
+            goto CHOOSE_SUBMODE_STRING;
     }
 }
 
@@ -193,19 +181,15 @@ static bool NFC_Handle(bool isRegist)
 
     // Then wait for RFID
     if (get_nfc->init() == false) {
-        // Output err string
         STP_LCD::showMessage(get_nfc->getErrorString());
         HAL_Delay(2000);
         goto RETURN_FALSE_NFC;
     }
     get_nfc->loop();
     get_nfc->deinit();
-    if (get_key->getResCode() != Opera::OK && get_key->getResCode() != Opera::USR_Cancel) {
-        // output err message
+    if (get_key->getResCode() != Opera::OK {
         STP_LCD::showMessage(get_nfc->getErrorString());
         HAL_Delay(1000);
-        goto RETURN_FALSE_NFC;
-    } else if (get_key->getResCode() == Opera::USR_Cancel) {
         goto RETURN_FALSE_NFC;
     }
     nfc_data->overWrite(get_nfc->getAns());
@@ -215,72 +199,55 @@ static bool NFC_Handle(bool isRegist)
         for (int i = 0; i <= 3; i++) {
             sheet = new DB_Sheet((enum DB_Sheet::DB_Sector)i);
             node = sheet->search(*room_id);
-            // If the roomid and its rfid is exited, we should ask for replace data
             if (node != NULL) {
                 break;
             }
             delete sheet;
         }
-        // if found same RoomID in sheet and its RFID is exited, while this sheet is stilling alive.
+        // If found same ROOMID, check if this usr's rfid is empty.
         if (node != NULL && node->rfid.isNull() == false) {
+        TRY_PASSWORD:
             // Warnning if usr wanna replace the ID
             STP_LCD::showMessage(TEXT_REPLACE);
             get_password->init();
-            do {
-                get_password->loop();
-            } while (get_password->getResCode() != Opera::OK && get_password->getResCode() != Opera::USR_Cancel);
+            get_password->loop();
             get_password->deinit();
-
-            if (DB_Sheet::checkPassword(get_password->getAns()) && get_password->getResCode() == Opera::OK) {
+            if (get_password->getResCode() == Opera::OK && DB_Sheet::checkPassword(get_password->getAns())) {
                 ;
+            } else if (get_password->getResCode() == Opera::OK) {
+                STP_LCD::showMessage("Wrong Password");
+                HAL_Delay(1000);
+                goto TRY_PASSWORD;
             } else {
+                STP_LCD::showMessage(get_password->getErrorString());
+                HAL_Delay(1000);
                 delete sheet;
-                STP_LCD::showMessage(TEXT_CANCEL);
                 goto RETURN_FALSE_NFC;
             }
 
-            // Working...
-            STP_LCD::showNum((const char*)node->rid.data(), 4);
-            STP_LCD::showMessage("Working....");
             node->rfid.overWrite(nfc_data->data());
-            sheet->writeBack(true);
-            delete sheet;
-            HAL_Delay(1000);
         } else if (node != NULL) {
-            // Working...
-            STP_LCD::showNum((const char*)node->rid.data(), 4);
-            STP_LCD::showMessage("Working....");
             node->rfid.overWrite(nfc_data->data());
-            sheet->writeBack(true);
-            delete sheet;
-            HAL_Delay(1000);
         } else {
             DB_Usr usr;
-            // Working...
-            STP_LCD::showNum((const char*)room_id->data(), 4);
-            STP_LCD::showMessage("Working...");
             sheet = new DB_Sheet(DB_Sheet::Sector_1);
             usr.rid.overWrite(room_id->data());
             usr.rfid.overWrite(nfc_data->data());
             sheet->add(usr);
-            sheet->writeBack();
-            delete sheet;
-            HAL_Delay(1000);
         }
-
+        // Working...
+        STP_LCD::showNum((const char*)node->rid.data(), 4);
+        STP_LCD::showMessage("Working....");
+        sheet->writeBack(true);
+        delete sheet;
+        HAL_Delay(1000);
         // Log-in mode
     } else {
         // Match rfid in DB sheet
-        nfc_data->overWrite(get_nfc->getAns());
         for (int i = 1; i <= 3; i++) {
             sheet = new DB_Sheet((enum DB_Sheet::DB_Sector)i);
             node = sheet->search(*nfc_data);
             if (node != NULL) {
-                // TODO: send message to slaver
-                STP_LCD::showNum((const char*)node->rid.data(), 4);
-                STP_LCD::showMessage("Working....");
-                delete sheet;
-                HAL_Delay(1000);
                 break;
             }
             delete sheet;
@@ -288,8 +255,14 @@ static bool NFC_Handle(bool isRegist)
         if (node == NULL) {
             // Not match message
             STP_LCD::showMessage(TEXT_UNKNOWUSER);
-            HAL_Delay(2000);
+            HAL_Delay(1000);
             goto RETURN_FALSE_NFC;
+        } else {
+            // TODO: send message to slaver
+            STP_LCD::showNum((const char*)node->rid.data(), 4);
+            STP_LCD::showMessage("Working...");
+            HAL_Delay(1000);
+            delete sheet;
         }
     }
 
@@ -344,16 +317,16 @@ static bool Finger_Handle(bool isRegist)
             STP_LCD::showMessage("");
         }
         get_finger->loop();
-        if (get_finger->getResCode() == Opera::USR_Cancel) {
-            get_finger->deinit();
-            STP_LCD::showMessage(TEXT_CANCEL);
-            HAL_Delay(1000);
-            goto RETURN_FALSE_FINGER;
-        } else if (get_finger->getResCode() == Opera::OK) {
+        if (get_finger->getResCode() == Opera::OK) {
             finger_data[i++].overWrite(get_finger->getAns());
         } else {
+            get_finger->deinit();
             STP_LCD::showMessage(get_finger->getErrorString());
-            HAL_Delay(2000);
+            HAL_Delay(1000);
+            if (get_finger->getResCode() == Opera::USR_Cancel) {
+                goto RETURN_FALSE_FINGER;
+            }
+            get_finger->init();
             continue;
         }
     }
@@ -367,84 +340,62 @@ static bool Finger_Handle(bool isRegist)
 
             // if RoomID and Fingerprint is exited(any Fingerprint is not null)
             if (node != NULL) {
-                for (int i = 0; i < 5; i++) {
+                for (int i = 0; i < 5; i++)
                     if (node->finger[i].isNull() == false) {
                         isNull = false;
                         break;
                     }
-                }
-                if (isNull == false) {
-                    break;
-                }
+                break;
             }
             delete sheet;
         }
         // If node != NULL, sheet is still alive
         if (node != NULL && isNull == false) {
-            // Warnning if usr wnna replace the ID
+        TRY_PASSWORD:
+            // Warnning if usr wanna replace the ID
             STP_LCD::showMessage(TEXT_REPLACE);
             get_password->init();
-            do {
-                get_password->loop();
-            } while (get_password->getResCode() != Opera::OK && get_password->getResCode() != Opera::USR_Cancel);
+            get_password->loop();
             get_password->deinit();
-            if (DB_Sheet::checkPassword(get_password->getAns()) && get_password->getResCode() == Opera::OK) {
+            if (get_password->getResCode() == Opera::OK && DB_Sheet::checkPassword(get_password->getAns())) {
                 ;
-            } else {
-                delete sheet;
-                STP_LCD::showMessage(TEXT_CANCEL);
+            } else if (get_password->getResCode() == Opera::OK) {
+                STP_LCD::showMessage("Wrong Password");
                 HAL_Delay(1000);
-                goto RETURN_FALSE_FINGER;
+                goto TRY_PASSWORD;
+            } else {
+                STP_LCD::showMessage(get_password->getErrorString());
+                HAL_Delay(1000);
+                delete sheet;
+                goto RETURN_FALSE_NFC;
             }
 
-            // Working...
-            STP_LCD::clear();
-            STP_LCD::showNum((const char*)(node->rid.data()), 4);
-            STP_LCD::showMessage("Working....");
-            HAL_Delay(2000);
-            for (int i = 0; i < 5; i++) {
-                node->rfid.overWrite(finger_data[i]);
-            }
-            sheet->writeBack(true);
-            delete sheet;
+            for (int i = 0; i < 5; i++)
+                node->finger[i].overWrite(finger_data[i]);
         } else if (node != NULL) {
-            // Working...
-            STP_LCD::clear();
-            STP_LCD::showNum((const char*)(node->rid.data()), 4);
-            STP_LCD::showMessage("Working....");
-            HAL_Delay(2000);
-            for (int i = 0; i < 5; i++) {
-                node->rfid.overWrite(finger_data[i]);
-            }
-            sheet->writeBack(true);
-            delete sheet;
+            for (int i = 0; i < 5; i++)
+                node->finger[i].overWrite(finger_data[i]);
         } else {
             DB_Usr usr;
-            STP_LCD::clear();
-            STP_LCD::showNum((const char*)room_id->data(), 4);
-            STP_LCD::showMessage("Working....");
-            HAL_Delay(2000);
             sheet = new DB_Sheet(DB_Sheet::Sector_1);
-            for (int i = 0; i < 5; i++) {
+            for (int i = 0; i < 5; i++)
                 usr.finger[i].overWrite(finger_data[i]);
-            }
             usr.rid.overWrite(room_id->data());
             sheet->add(usr);
-            sheet->writeBack();
-            delete sheet;
         }
+        // Working...
+        STP_LCD::clear();
+        STP_LCD::showNum((const char*)(node->rid.data()), 4);
+        STP_LCD::showMessage("Working....");
+        sheet->writeBack(true);
+        delete sheet;
+        HAL_Delay(1000);
     } else {
         // match Fingerprint[0] in data sheet
         for (int i = 1; i <= 3; i++) {
             sheet = new DB_Sheet((enum DB_Sheet::DB_Sector)i);
             node = sheet->search(finger_data[0]);
             if (node != NULL) {
-                // TODO: send message to slaver
-                STP_LCD::clear();
-                STP_LCD::showNum((const char*)node->rid.data(), 4);
-                STP_LCD::showMessage("Working....");
-                HAL_Delay(2000);
-                delete sheet;
                 break;
             }
             delete sheet;
@@ -454,6 +405,13 @@ static bool Finger_Handle(bool isRegist)
             STP_LCD::showMessage(TEXT_UNKNOWUSER);
             HAL_Delay(1000);
             goto RETURN_FALSE_FINGER;
+        } else {
+            // TODO: send message to slaver
+            STP_LCD::clear();
+            STP_LCD::showNum((const char*)node->rid.data(), 4);
+            STP_LCD::showMessage("Working....");
+            HAL_Delay(2000);
+            delete sheet;
         }
     }
     delete get_key;
@@ -498,10 +456,13 @@ bool Key_Handle(bool isRegist)
     // Input room's passowrd
     STP_LCD::showMessage(TEXT_ROOMID);
     get_password->init();
-    do {
-        get_password->loop();
-    } while (get_password->getResCode() != Opera::OK && get_password->getResCode() != Opera::USR_Cancel);
+    get_password->loop();
     get_password->deinit();
+    if (get_password->getResCode() != Opera::OK) {
+        STP_LCD::showMessage(get_password->getErrorString());
+        HAL_Delay(1000);
+        goto RETURN_FALSE_KEY;
+    }
 
     // if it's register, check if roomid and passowrd is exit
     if (isRegist) {
@@ -516,60 +477,46 @@ bool Key_Handle(bool isRegist)
 
         // if found a exit data, ask for manager password to replace it
         if (node != NULL && node->pid.isNull() == false) {
+        TRY_PASSWORD:
             // Warnning if usr wanna replace the ID
             STP_LCD::showMessage(TEXT_REPLACE);
             get_password->init();
-            do {
-                get_password->loop();
-            } while (get_password->getResCode() != Opera::OK && get_password->getResCode() != Opera::USR_Cancel);
+            get_password->loop();
             get_password->deinit();
-
-            if (DB_Sheet::checkPassword(get_password->getAns()) && get_password->getResCode() == Opera::OK) {
+            if (get_password->getResCode() == Opera::OK && DB_Sheet::checkPassword(get_password->getAns())) {
                 ;
+            } else if (get_password->getResCode() == Opera::OK) {
+                STP_LCD::showMessage("Wrong Password");
+                HAL_Delay(1000);
+                goto TRY_PASSWORD;
             } else {
+                STP_LCD::showMessage(get_password->getErrorString());
+                HAL_Delay(1000);
                 delete sheet;
-                STP_LCD::showMessage(TEXT_CANCEL);
-                goto RETURN_FALSE_KEY;
+                goto RETURN_FALSE_NFC;
             }
 
-            // Working...
-            STP_LCD::showNum((const char*)node->rid.data(), 4);
-            STP_LCD::showMessage("Working....");
             node->pid.overWrite(*password);
-            sheet->writeBack(true);
-            delete sheet;
-            HAL_Delay(1000);
         } else if (node != NULL) {
-            // Working...
-            STP_LCD::showNum((const char*)node->rid.data(), 4);
-            STP_LCD::showMessage("Working....");
-            node->pid.overWrite(*password);
             sheet->writeBack(true);
-            delete sheet;
-            HAL_Delay(1000);
         } else {
-            // Working...
             DB_Usr usr;
-            STP_LCD::showNum((const char*)room_id->data(), 4);
-            STP_LCD::showMessage("Working...");
             sheet = new DB_Sheet(DB_Sheet::Sector_1);
             usr.rid.overWrite(room_id->data());
             usr.pid.overWrite(password->data());
             sheet->add(usr);
-            sheet->writeBack();
-            delete sheet;
-            HAL_Delay(1000);
         }
+        // Working...
+        STP_LCD::showNum((const char*)node->rid.data(), 4);
+        STP_LCD::showMessage("Working....");
+        sheet->writeBack(true);
+        delete sheet;
+        HAL_Delay(1000);
     } else {
         for (int i = 1; i <= 3; i++) {
             sheet = new DB_Sheet((enum DB_Sheet::DB_Sector)i);
             node = sheet->search(*room_id);
-            if (node != NULL && node->pid == *password) {
-                // TODO: send message to slaver
-                STP_LCD::showNum((const char*)node->rid.data(), 4);
-                STP_LCD::showMessage("Working....");
-                delete sheet;
-                HAL_Delay(1000);
+            if (node != NULL) {
                 break;
             }
             delete sheet;
@@ -579,6 +526,19 @@ bool Key_Handle(bool isRegist)
             STP_LCD::showMessage(TEXT_UNKNOWUSER);
             HAL_Delay(2000);
             goto RETURN_FALSE_KEY;
+        } else {
+            if (node->pid == *password) {
+                // TODO: send message to slaver
+                STP_LCD::showNum((const char*)node->rid.data(), 4);
+                STP_LCD::showMessage("Working....");
+                HAL_Delay(1000);
+            } else {
+                STP_LCD::showNum("");
+                STP_LCD::showMessage("Wrong Password");
+                HAL_Delay(1000);
+                goto RETURN_FALSE_KEY;
+            }
+            delete sheet;
         }
     }
 
@@ -594,4 +554,3 @@ RETURN_FALSE_KEY:
     delete password;
     return false;
 }
-

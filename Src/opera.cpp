@@ -177,13 +177,15 @@ bool Opera_getUsrKey::exitCheck()
         while (keymat->scan())
             ;
         ErrorCode = USR_Cancel;
-        ErrorStr = "Usr Cancel";
+        ErrorStr = (const char*)TEXT_CANCEL;
+        STP_LCD::showNum("");
         return true;
     } else if (keymat->isPress(STP_KeyMat::KEY_ID_YES) && pos == maxNum) {
         while (keymat->scan())
             ;
         ErrorCode = OK;
         ErrorStr = "Comfirme";
+        STP_LCD::showNum("");
         return true;
     } else if (keymat->isPress(STP_KeyMat::KEY_ID_YES)) {
         while (keymat->scan())
@@ -195,16 +197,16 @@ bool Opera_getUsrKey::exitCheck()
             ErrorStr = "Please input 4 char";
         else
             ErrorStr = "Please input right number of char";
-        return true;
+        STP_LCD::showNum("");
+
+		// opt1:用户错误需要提示的话应return true,在上一级函数中给予提示
+		// opt2:直接在当前位置输出字符串并延时保证显示时间
+		// opt3:不显示直接继续循环
+        return false;
     }
-    switch (_mode) {
-    case Opera_getUsrKey::getPassword: {
-    } break;
-    case Opera_getUsrKey::getTime: {
-    } break;
-    case Opera_getUsrKey::getRoomID: {
+
+    if (_mode == getRoomID) {
         switchTitle(TEXT_ROOMID);
-    } break;
     }
     return false;
 }

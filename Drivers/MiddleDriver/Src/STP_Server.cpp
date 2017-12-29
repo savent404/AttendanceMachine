@@ -1,5 +1,7 @@
 #include "STP_Server.hpp"
 
+extern void rec_callback(enum STP_ServerBase::CMD cmd);
+
 static STP_ServerBase* CurrentServerHandle = (STP_ServerBase*)NULL;
 static STP_ServerBase* STP_GetCurrentServer()
 {
@@ -96,7 +98,7 @@ void STP_ServerRS485::Callback()
 
 // 有效接受
 GOT_A_MESSAGE:
-
+    rec_callback((enum CMD)CMDBuffer[0]);
 NORMAL_OPERA:
     // 等待下一个字符
     setReminder();

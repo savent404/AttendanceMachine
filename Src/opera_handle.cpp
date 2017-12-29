@@ -21,7 +21,29 @@ static bool Finger_Handle(bool isRegist);
  * @param  isRegist:true 注册流程，否则为登入流程
  */
 static bool Key_Handle(bool isRegist);
-
+void rec_callback(enum STP_ServerBase::CMD cmd)
+{
+    switch (cmd) {
+    case STP_ServerBase::CMD_ERROR_UNKNOW: {
+        STP_LCD::showMessage(TEXT_ERROR_UNKNOW);
+    } break;
+    case STP_ServerBase::CMD_ERROR_BREAKIN: {
+        STP_LCD::showMessage(TEXT_ERROR_BREAKIN);
+    } break;
+    case STP_ServerBase::CMD_ERROR_LIMIT: {
+        STP_LCD::showMessage(TEXT_ERROR_LIMIT);
+    } break;
+    case STP_ServerBase::CMD_ERROR_CHAT: {
+        STP_LCD::showMessage(TEXT_ERROR_CHAT);
+    } break;
+    }
+    HAL_GPIO_WritePin(BELL_GPIO_Port, BELL_Pin, GPIO_PIN_SET);
+    while (1) {
+        if (keyboard->isPress(STP_KeyMat::KEY_ID_NO)) {
+            HAL_NVIC_SystemReset();
+        }
+    }
+}
 /*********************************************
  * @name   OP_Handle
  * @brief  操作执行实体
@@ -46,6 +68,7 @@ void OP_Handle(void)
 
     server->reciMessage();
 
+    if (__HAL_RCC_GET_FLAG(RCC_FLAG_SFTRST) == 0) {
     // Setting the RTC parameter
     op = new Opera_getUsrKey(*keyboard, Opera_getUsrKey::getTime);
     op->init();
@@ -66,6 +89,7 @@ void OP_Handle(void)
         rtc->setTime(h, m, s);
     }
     delete op;
+    }
 
     // Goto welcome interface, waitting for "0 + down" and manager password
     while (1) {

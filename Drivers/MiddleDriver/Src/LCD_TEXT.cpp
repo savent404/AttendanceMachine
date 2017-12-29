@@ -15,3 +15,8 @@ char TEXT_CANCEL[] = "用户取消";
 
 char TEXT_CHOOSE_MODE_1[] = "选择输入模式(0,1,2)";
 char TEXT_CHOOSE_MODE_2[] = "选择输入模式(0,1)";
+
+char TEXT_ERROR_UNKNOW[] = "未知错误";
+char TEXT_ERROR_BREAKIN[] = "未授权进入";
+char TEXT_ERROR_LIMIT[] = "位置极限";
+char TEXT_ERROR_CHAT[] = "通讯错误";

@@ -19,6 +19,10 @@ extern char TEXT_REPLACE[];
 extern char TEXT_CANCEL[];
 extern char TEXT_CHOOSE_MODE_1[];
 extern char TEXT_CHOOSE_MODE_2[];
+extern char TEXT_ERROR_UNKNOW[];
+extern char TEXT_ERROR_BREAKIN[];
+extern char TEXT_ERROR_LIMIT[];
+extern char TEXT_ERROR_CHAT[];
 
 class STP_LCD {
 public:
@@ -59,10 +63,10 @@ public:
             char buffer[50];
             strncpy(buffer, str, maxlen);
             buffer[maxlen] = '\0';
-            showLabel(48, 350, 200, 510, buffer, 0);
+            showLabel(48, 350, 160, 510, buffer, 1);
 
         } else
-            showLabel(48, 350, 200, 510, str, 0);
+            showLabel(48, 350, 160, 510, str, 1);
     }
 
     static void showMessage(const char* message)

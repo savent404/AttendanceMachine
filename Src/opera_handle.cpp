@@ -138,13 +138,13 @@ void OP_Handle(void)
         switch (Mode) {
         case OPFinger: {
             Finger_Handle(subMode == Login ? false : true);
-        }
+        } break;
         case OPNFC: {
             NFC_Handle(subMode == Login ? false : true);
-        }
+        } break;
         case OPKey: {
             Key_Handle(subMode == Login ? false : true);
-        }
+        } break;
         default:
             continue;
         }
@@ -187,7 +187,7 @@ static bool NFC_Handle(bool isRegist)
     }
     get_nfc->loop();
     get_nfc->deinit();
-    if (get_key->getResCode() != Opera::OK {
+    if (get_key->getResCode() != Opera::OK) {
         STP_LCD::showMessage(get_nfc->getErrorString());
         HAL_Delay(1000);
         goto RETURN_FALSE_NFC;
@@ -367,7 +367,7 @@ static bool Finger_Handle(bool isRegist)
                 STP_LCD::showMessage(get_password->getErrorString());
                 HAL_Delay(1000);
                 delete sheet;
-                goto RETURN_FALSE_NFC;
+                goto RETURN_FALSE_FINGER;
             }
 
             for (int i = 0; i < 5; i++)
@@ -493,7 +493,7 @@ bool Key_Handle(bool isRegist)
                 STP_LCD::showMessage(get_password->getErrorString());
                 HAL_Delay(1000);
                 delete sheet;
-                goto RETURN_FALSE_NFC;
+                goto RETURN_FALSE_KEY;
             }
 
             node->pid.overWrite(*password);

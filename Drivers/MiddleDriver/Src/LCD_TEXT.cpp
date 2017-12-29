@@ -1,6 +1,6 @@
 #include "STP_LCD.hpp"
 
-char LED_WELCOME[] = "CLS(0);DS32(234,73,'上海xxx设备制造有限公司',7,0);DS48(215,335,'智能家居，安全出行',7,0);";
+char LCD_WELCOME[] = "CLS(0);DS32(234,73,'上海xxx设备制造有限公司',7,0);DS48(215,335,'智能家居，安全出行',7,0);";
 char TEXT_NFC_001[] = "请刷卡";
 char TEST_FINGER_001[] = "请按下手指";
 char TEXT_FINGER_002[] = "OK!请松开手指";

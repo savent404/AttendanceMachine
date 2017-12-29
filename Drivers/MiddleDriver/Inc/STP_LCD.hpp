@@ -7,19 +7,18 @@
 #define LCD_UART (&huart3)
 
 #define LCD_CLEAR "CLS(0);"
-char LCD_WELCOMDE[];
-char LCD_WELCOME[];
-char TEXT_NFC_001[];
-char TEST_FINGER_001[];
-char TEXT_FINGER_002[];
-char TEXT_TIME[];
-char TEXT_PASSWORD[];
-char TEXT_ROOMID[];
-char TEXT_UNKNOWUSER[];
-char TEXT_REPLACE[];
-char TEXT_CANCEL[];
-char TEXT_CHOOSE_MODE_1[];
-char TEXT_CHOOSE_MODE_2[];
+extern char LCD_WELCOME[];
+extern char TEXT_NFC_001[];
+extern char TEST_FINGER_001[];
+extern char TEXT_FINGER_002[];
+extern char TEXT_TIME[];
+extern char TEXT_PASSWORD[];
+extern char TEXT_ROOMID[];
+extern char TEXT_UNKNOWUSER[];
+extern char TEXT_REPLACE[];
+extern char TEXT_CANCEL[];
+extern char TEXT_CHOOSE_MODE_1[];
+extern char TEXT_CHOOSE_MODE_2[];
 
 class STP_LCD {
 public:

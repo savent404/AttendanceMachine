@@ -28,9 +28,8 @@ public:
         CMD_SECURITY = 0x40, // 主机紧急停止按钮
         CMD_ERROR_UNKNOW = 0x41, //从机未知错误
         CMD_ERROR_BREAKIN = 0x42, //未授权进入
-        CMD_ERROR_LIMIT = 0x43 // 极限位置
-        CMD_ERROR_CHAT
-        = 0x44
+        CMD_ERROR_LIMIT = 0x43, // 极限位置
+        CMD_ERROR_CHAT = 0x44
     };
     STP_ServerBase();
     virtual ~STP_ServerBase();

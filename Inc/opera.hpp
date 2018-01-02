@@ -10,7 +10,7 @@
 #include "STP_RTC.hpp"
 #include "STP_Server.hpp"
 
-void OP_Handle();
+extern "C" void OP_Handle();
 
 class Opera {
 public:
@@ -27,7 +27,7 @@ public:
         ErrorStr = (const char*)"Unknow Error";
         ans = (uint8_t*)malloc(ans_size);
         for (int i = 0; i < ans_size; i++) {
-            ans[i] = 'a';
+            ans[i] = '\0';
         }
     }
     virtual ~Opera() { free(ans); }

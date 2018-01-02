@@ -7,20 +7,28 @@ STP_RTC* rtc;
 /**
  * @brief  获取RFID的子流程
  * @param  isRegist:true 注册流程，否则为登入流程
+ * @retvl  返回上一级为true
  */
 static bool NFC_Handle(bool isRegist);
 
 /**
  * @brief  获取FingerPrint的子流程
  * @param  isRegist:true 注册流程，否则为登入流程
+ * @retvl  返回上一级为true
  */
 static bool Finger_Handle(bool isRegist);
 
 /**
  * @brief  获取key的子流程
  * @param  isRegist:true 注册流程，否则为登入流程
+ * @retvl  返回上一级为true
  */
 static bool Key_Handle(bool isRegist);
+
+/**
+ * @brief  下位机串口回调函数
+ * @note   处于中断中，由于都是异常消息，默认触发软件复位
+ */
 void rec_callback(enum STP_ServerBase::CMD cmd)
 {
     switch (cmd) {
@@ -108,20 +116,19 @@ void OP_Handle(void)
         }
         if (keyboard->isPress(STP_KeyMat::KEY_ID_0) && keyboard->isPress(STP_KeyMat::KEY_ID_DOWN)) {
             STP_LCD::clear();
-            op = new Opera_getUsrKey(*keyboard, Opera_getUsrKey::getPassword);
-            op->init();
             while (keyboard->scan())
                 ;
-            do {
-                op->loop();
-            } while ((op->getResCode() != Opera::OK && op->getResCode() != Opera::USR_Cancel) || DB_Sheet::checkPassword(op->getAns()) == false);
-
+            op = new Opera_getUsrKey(*keyboard, Opera_getUsrKey::getPassword);
+            op->init();
+            op->loop();
             op->deinit();
-            delete op;
-            if (op->getResCode() == Opera::USR_Cancel) {
+            if (DB_Sheet::checkPassword(op->getAns()) == true) {
+                delete op;
+                break;
+            } else {
+                delete op;
                 continue;
             }
-            break;
         }
     }
 
@@ -137,13 +144,13 @@ void OP_Handle(void)
         } else if (keyboard->isPress(STP_KeyMat::KEY_ID_2)) {
             Mode = OPKey;
         } else if (keyboard->isPress(STP_KeyMat::KEY_ID_3)) {
-          STP_LCD::showMessage("Change Root Password");
+            STP_LCD::showMessage("Change Root Password");
             while (keyboard->scan())
                 ;
             Opera* get = new Opera_getUsrKey(*keyboard, Opera_getUsrKey::getPassword);
             do {
-              get->init();
-              get->loop();
+                get->init();
+                get->loop();
             } while (get->getResCode() != Opera::OK);
             get->deinit();
             DB_Sheet* sheet = new DB_Sheet(DB_Sheet::Sector_1);
@@ -151,6 +158,10 @@ void OP_Handle(void)
             sheet->writeBack();
             delete sheet;
             delete get;
+            continue;
+        } else if (keyboard->isPress(STP_KeyMat::KEY_ID_NO)) {
+            while (keyboard->scan())
+                ;
             continue;
         } else {
             goto CHOOSE_MODE;
@@ -166,6 +177,10 @@ void OP_Handle(void)
             subMode = Login;
         } else if (keyboard->isPress(STP_KeyMat::KEY_ID_1)) {
             subMode = Regist;
+        } else if (keyboard->isPress(STP_KeyMat::KEY_ID_NO)) {
+            while (keyboard->scan())
+                ;
+            continue;
         } else {
             goto CHOOSE_SUBMODE;
         }
@@ -176,13 +191,19 @@ void OP_Handle(void)
         STP_LCD::clear();
         switch (Mode) {
         case OPFinger: {
-            Finger_Handle(subMode == Login ? false : true);
+            if (Finger_Handle(subMode == Login ? false : true)) {
+                goto CHOOSE_SUBMODE_STRING;
+            }
         } break;
         case OPNFC: {
-            NFC_Handle(subMode == Login ? false : true);
+            if (NFC_Handle(subMode == Login ? false : true)) {
+                goto CHOOSE_SUBMODE_STRING;
+            }
         } break;
         case OPKey: {
-            Key_Handle(subMode == Login ? false : true);
+            if (Key_Handle(subMode == Login ? false : true)) {
+                goto CHOOSE_SUBMODE_STRING;
+            }
         } break;
         default:
             continue;
@@ -210,7 +231,9 @@ static bool NFC_Handle(bool isRegist)
         get_key->init();
         get_key->loop();
         get_key->deinit();
-        if (get_key->getResCode() != Opera::OK) {
+        if (get_key->getResCode() == Opera::USR_Cancel) {
+            goto RETURN_EXIT_NFC;
+        } else if (get_key->getResCode() != Opera::OK) {
             STP_LCD::showMessage(get_key->getErrorString());
             HAL_Delay(1000);
             goto RETURN_FALSE_NFC;
@@ -226,7 +249,9 @@ static bool NFC_Handle(bool isRegist)
     }
     get_nfc->loop();
     get_nfc->deinit();
-    if (get_key->getResCode() != Opera::OK) {
+    if (get_key->getResCode() == Opera::USR_Cancel) {
+        goto RETURN_EXIT_NFC;
+    } else if (get_key->getResCode() != Opera::OK) {
         STP_LCD::showMessage(get_nfc->getErrorString());
         HAL_Delay(1000);
         goto RETURN_FALSE_NFC;
@@ -257,6 +282,9 @@ static bool NFC_Handle(bool isRegist)
                 STP_LCD::showMessage("Wrong Password");
                 HAL_Delay(1000);
                 goto TRY_PASSWORD;
+            } else if (get_password->getResCode() == Opera::USR_Cancel) {
+                delete sheet;
+                goto RETURN_FALSE_NFC;
             } else {
                 STP_LCD::showMessage(get_password->getErrorString());
                 HAL_Delay(1000);
@@ -312,7 +340,7 @@ static bool NFC_Handle(bool isRegist)
     delete get_nfc;
     delete nfc_data;
     delete room_id;
-    return true;
+    return false;
 
 RETURN_FALSE_NFC:
     delete get_key;
@@ -321,6 +349,13 @@ RETURN_FALSE_NFC:
     delete nfc_data;
     delete room_id;
     return false;
+RETURN_EXIT_NFC:
+    delete get_key;
+    delete get_password;
+    delete get_nfc;
+    delete nfc_data;
+    delete room_id;
+    return true;
 }
 
 static bool Finger_Handle(bool isRegist)
@@ -339,7 +374,9 @@ static bool Finger_Handle(bool isRegist)
         get_key->init();
         get_key->loop();
         get_key->deinit();
-        if (get_key->getResCode() != Opera::OK) {
+        if (get_key->getResCode() == Opera::USR_Cancel) {
+            goto RETURN_EXIT_FINGER;
+        } else if (get_key->getResCode() != Opera::OK) {
             STP_LCD::showMessage(get_key->getErrorString());
             HAL_Delay(1000);
             goto RETURN_FALSE_FINGER;
@@ -360,13 +397,12 @@ static bool Finger_Handle(bool isRegist)
         get_finger->loop();
         if (get_finger->getResCode() == Opera::OK) {
             finger_data[i++].overWrite(get_finger->getAns());
+        } else if (get_finger->getResCode() == Opera::USR_Cancel) {
+            goto RETURN_EXIT_FINGER;
         } else {
             get_finger->deinit();
             STP_LCD::showMessage(get_finger->getErrorString());
             HAL_Delay(1000);
-            if (get_finger->getResCode() == Opera::USR_Cancel) {
-                goto RETURN_FALSE_FINGER;
-            }
             get_finger->init();
             continue;
         }
@@ -404,6 +440,9 @@ static bool Finger_Handle(bool isRegist)
                 STP_LCD::showMessage("Wrong Password");
                 HAL_Delay(1000);
                 goto TRY_PASSWORD;
+            } else if (get_password->getResCode() == Opera::USR_Cancel) {
+                delete sheet;
+                goto RETURN_FALSE_FINGER;
             } else {
                 STP_LCD::showMessage(get_password->getErrorString());
                 HAL_Delay(1000);
@@ -462,7 +501,7 @@ static bool Finger_Handle(bool isRegist)
     delete get_finger;
     delete finger_data;
     delete room_id;
-    return true;
+    return false;
 RETURN_FALSE_FINGER:
     for (int i = 0; i < 5; i++) {
         uint8_t* buf = finger_data[i].data();
@@ -475,6 +514,18 @@ RETURN_FALSE_FINGER:
     delete finger_data;
     delete room_id;
     return false;
+RETURN_EXIT_FINGER:
+    for (int i = 0; i < 5; i++) {
+        uint8_t* buf = finger_data[i].data();
+        uint16_t id = *buf | (*(buf + 1) << 8);
+        GR307_Delete(id);
+    }
+    delete get_key;
+    delete get_password;
+    delete get_finger;
+    delete finger_data;
+    delete room_id;
+    return true;
 }
 
 bool Key_Handle(bool isRegist)
@@ -489,7 +540,9 @@ bool Key_Handle(bool isRegist)
     // Input room id first
     get_key->init();
     get_key->loop();
-    if (get_key->getResCode() != Opera::OK) {
+    if (get_key->getResCode() == Opera::USR_Cancel) {
+        goto RETURN_EXIT_KEY;
+    } else if (get_key->getResCode() != Opera::OK) {
         STP_LCD::showMessage(get_key->getErrorString());
         HAL_Delay(1000);
         goto RETURN_FALSE_KEY;
@@ -500,7 +553,9 @@ bool Key_Handle(bool isRegist)
     get_password->init();
     get_password->loop();
     get_password->deinit();
-    if (get_password->getResCode() != Opera::OK) {
+    if (get_password->getResCode() == Opera::USR_Cancel) {
+        goto RETURN_EXIT_KEY;
+    } else if (get_password->getResCode() != Opera::OK) {
         STP_LCD::showMessage(get_password->getErrorString());
         HAL_Delay(1000);
         goto RETURN_FALSE_KEY;
@@ -533,6 +588,9 @@ bool Key_Handle(bool isRegist)
                 STP_LCD::showMessage("Wrong Password");
                 HAL_Delay(1000);
                 goto TRY_PASSWORD;
+            } else if (get_password->getResCode() == Opera::USR_Cancel) {
+                delete sheet;
+                goto RETURN_FALSE_KEY;
             } else {
                 STP_LCD::showMessage(get_password->getErrorString());
                 HAL_Delay(1000);
@@ -659,11 +717,17 @@ bool Key_Handle(bool isRegist)
     delete get_password;
     delete room_id;
     delete password;
-    return true;
+    return false;
 RETURN_FALSE_KEY:
     delete get_key;
     delete get_password;
     delete room_id;
     delete password;
     return false;
+RETURN_EXIT_KEY:
+    delete get_key;
+    delete get_password;
+    delete room_id;
+    delete password;
+    return true;
 }

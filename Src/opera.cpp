@@ -59,6 +59,8 @@ bool Opera_getNFC::deinit()
 bool Opera_getNFC::exitCheck()
 {
     if (keymat->isPress(STP_KeyMat::KEY_ID_NO)) {
+				while (keymat->scan())
+					;
         ErrorCode = USR_Cancel;
         ErrorStr = "Usr Cancel";
         return true;
@@ -111,6 +113,8 @@ bool Opera_getFinger::deinit()
 bool Opera_getFinger::exitCheck()
 {
     if (keymat->isPress(STP_KeyMat::KEY_ID_NO)) {
+			while(keymat->scan())
+				;
         ErrorCode = USR_Cancel;
         ErrorStr = "Usr Cancel";
         return true;
@@ -152,10 +156,19 @@ Opera_getUsrKey::Opera_getUsrKey(STP_KeyMat& kb, enum getMode mode)
 {
     keymat = &kb;
     pos = 0;
-    if (_mode == getRoomID)
+    switch (mode) {
+    case getRoomID:
         maxNum = 4;
-    else
+        break;
+    case getPassword:
         maxNum = 6;
+        break;
+    case getTime:
+        maxNum = 6;
+        break;
+    default:
+        maxNum = 6;
+    }
 }
 bool Opera_getUsrKey::init()
 {
@@ -165,11 +178,11 @@ bool Opera_getUsrKey::init()
     if (_mode == getPassword)
         STP_LCD::setTitle(TEXT_PASSWORD);
     pos = 0;
-    memset(ans, 0, maxNum);
     return true;
 }
 bool Opera_getUsrKey::deinit()
 {
+    STP_LCD::setTitle("");
     STP_LCD::showNum("");
     return true;
 }
@@ -179,7 +192,7 @@ bool Opera_getUsrKey::exitCheck()
         while (keymat->scan())
             ;
         ErrorCode = USR_Cancel;
-        ErrorStr = (const char*)TEXT_CANCEL;
+        ErrorStr = "Usr Cancel";
         STP_LCD::showNum("");
         memset(ans, 0, 6);
         pos = 0;
@@ -191,7 +204,7 @@ bool Opera_getUsrKey::exitCheck()
         ErrorStr = "Comfirme";
         STP_LCD::showNum("");
         return true;
-    } else if (keymat->isPress(STP_KeyMat::KEY_ID_YES)) {
+    } else if (keymat->isPress(STP_KeyMat::KEY_ID_YES) && pos != maxNum) {
         while (keymat->scan())
             ;
         ErrorCode = USR_Error;

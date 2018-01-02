@@ -1,130 +1,23 @@
 #include "opera.hpp"
-#define OP_Finger 0
-#define OP_RFID 1
-#define OP_Room 2
-#define OP_Manager 3
-#define OP_Unknow 4
 
-STP_ServerBase* server;
-STP_KeyMat* keyboard;
-STP_RTC* rtc;
-
-static void NFC_Handle(bool isRegist)
+extern STP_RTC* rtc;
+static void switchTitle(const char* originTitle)
 {
-    Opera* get_key = new Opera_getUsrKey(*keyboard, Opera_getUsrKey::getRoomID);
-    Opera* get_password = new Opera_getUsrKey(*keyboard, Opera_getUsrKey::getPassword);
-    Opera* get_nfc = new Opera_getNFC(*keyboard);
-    DB_Base* nfc_data = new DB_RFID;
-    DB_Base* room_id = new DB_RoomID;
-    DB_Sheet* sheet;
-    std::list<DB_Usr>::iterator node;
-    while (1) {
-        const uint8_t reset_data[] = "000000";
-        nfc_data->overWrite(reset_data);
-        room_id->overWrite(reset_data);
-
-        if (isRegist == true) {
-            // Wait for input ROOM ID
-            get_key->init();
-            get_key->loop();
-            get_key->deinit();
-            if (get_key->getResCode() != Opera::OK) {
-                // TODO: output error message
-                continue;
-            }
-            // Wait for press RFID
-            get_nfc->init();
-            get_nfc->loop();
-            get_nfc->deinit();
-            if (get_key->getResCode() != Opera::OK && get_key->getResCode() != Opera::USR_Cancel) {
-                // TODO: output error message
-                continue;
-            }
-            // Match DB in Sheet
-            bool isFound = false;
-            room_id->overWrite(get_key->getAns());
-            nfc_data->overWrite(get_nfc->getAns());
-            for (int i = 1; i <= 3; i++) {
-                sheet = new DB_Sheet((enum DB_Sheet::DB_Sector)i);
-                node = sheet->search(*room_id);
-                if (node != NULL) {
-                    isFound = true;
-                    break;
-                }
-                delete sheet;
-            }
-            // Regist a new DB_Usr in exited room
-            if (isFound) {
-                // TODO: Warning if you replace the ID
-                get_password->init();
-                do {
-                    get_password->loop();
-                } while (get_password->getResCode() != Opera::OK && get_password->getResCode() != Opera::USR_Cancel);
-                get_password->deinit();
-                if (DB_Sheet::checkPassword(get_password->getAns())) {
-                    ;
-                } else {
-                    // TODO : output error message
-                    delete sheet;
-                    continue;
-                }
-                node->rfid.overWrite(nfc_data->data());
-                sheet->writeBack(true);
-                delete sheet;
-            } else {
-                DB_Usr usr;
-                sheet = new DB_Sheet(DB_Sheet::Sector_1);
-                usr.rid.overWrite(room_id->data());
-                usr.rfid.overWrite(nfc_data->data());
-                sheet->add(usr);
-                sheet->writeBack();
-                delete sheet;
-            }
-        } else {
-            // Wait for press nfc card
-            get_nfc->init();
-            get_nfc->loop();
-            get_nfc->deinit();
-            if (get_key->getResCode() != Opera::OK && get_key->getResCode() != Opera::USR_Cancel) {
-                // TODO: output error message
-                continue;
-            }
-            // Match in DB sheet
-            nfc_data->overWrite(get_nfc->getAns());
-            for (int i = 1; i <= 3; i++) {
-                sheet = new DB_Sheet(DB_Sheet::Sector_1);
-                auto node = sheet->search(*nfc_data);
-                if (node != node) {
-                    // TODO: send message to slaver
-                    delete sheet;
-                    break;
-                }
-                delete sheet;
-            }
+    static uint8_t sec = 0;
+    uint8_t h, m, s;
+    char buffer[10];
+    rtc->getTime(h, m, s);
+    if (s != sec) {
+        sec = s;
+        if ((s % 4) < 2)
+            STP_LCD::setTitle(originTitle);
+        else {
+            sprintf(buffer, "%02d:%02d:%02d", h, m, s);
+            STP_LCD::setTitle(buffer);
         }
     }
 }
-/*********************************************
- * @name   OP_Handle
- * @brief  操作执行实体
- */
-static bool isErase = false;
-void OP_Handle()
-{
-    if (isErase) {
-        DB_Sheet* sheet = new DB_Sheet(DB_Sheet::Sector_1);
-        sheet->clear();
-        sheet->writeBack();
-        delete sheet;
-    }
-    server = new STP_ServerRS485(&huart6);
-    keyboard = new STP_KeyMat;
-    rtc = new STP_RTC(&hrtc);
 
-    server->reciMessage();
-
-    NFC_Handle(true);
-}
 /*********************************************
  * @name   Opera_getNFC
  * @brief  获取4字节的RFID
@@ -137,6 +30,7 @@ Opera_getNFC::Opera_getNFC(STP_KeyMat& kb)
 }
 bool Opera_getNFC::init()
 {
+    STP_LCD::clear();
     nfc = new Adafruit_NFCShield_I2C(
         Adafruit_NFCShield_I2C::STM32_Pin(PN532_RDY_GPIO_Port, PN532_RDY_Pin),
         Adafruit_NFCShield_I2C::STM32_Pin((GPIO_TypeDef*)NULL, 0),
@@ -159,6 +53,7 @@ bool Opera_getNFC::init()
 bool Opera_getNFC::deinit()
 {
     delete nfc;
+    STP_LCD::clear();
     return true;
 }
 bool Opera_getNFC::exitCheck()
@@ -168,6 +63,7 @@ bool Opera_getNFC::exitCheck()
         ErrorStr = "Usr Cancel";
         return true;
     }
+    switchTitle(TEXT_NFC_001);
     return false;
 }
 bool Opera_getNFC::loop()
@@ -194,6 +90,7 @@ Opera_getFinger::Opera_getFinger(STP_KeyMat& kb, bool isCheck = true)
     : Opera(2)
     , _isCheck(isCheck)
 {
+    STP_LCD::clear();
     keymat = &kb;
 }
 bool Opera_getFinger::init()
@@ -208,6 +105,7 @@ bool Opera_getFinger::init()
 }
 bool Opera_getFinger::deinit()
 {
+    STP_LCD::clear();
     return true;
 }
 bool Opera_getFinger::exitCheck()
@@ -217,6 +115,7 @@ bool Opera_getFinger::exitCheck()
         ErrorStr = "Usr Cancel";
         return true;
     }
+    switchTitle(TEST_FINGER_001);
     return false;
 }
 bool Opera_getFinger::loop()
@@ -236,6 +135,9 @@ bool Opera_getFinger::loop()
                 return false;
             }
             memcpy(ans, &id, 2);
+            STP_LCD::showMessage(TEXT_FINGER_002);
+            while (HAL_GPIO_ReadPin(R307_INT_GPIO_Port, R307_INT_Pin) == GPIO_PIN_RESET)
+                ;
             return true;
         }
         if (exitCheck()) {
@@ -245,20 +147,30 @@ bool Opera_getFinger::loop()
 }
 
 Opera_getUsrKey::Opera_getUsrKey(STP_KeyMat& kb, enum getMode mode)
-    : Opera((int)mode)
+    : Opera(6)
     , _mode(mode)
-    , maxNum((int)mode)
 {
     keymat = &kb;
     pos = 0;
+    if (_mode == getRoomID)
+        maxNum = 4;
+    else
+        maxNum = 6;
 }
 bool Opera_getUsrKey::init()
 {
+    memset(ans, 0, maxNum);
+    if (_mode == getTime)
+        STP_LCD::setTitle(TEXT_TIME);
+    if (_mode == getPassword)
+        STP_LCD::setTitle(TEXT_PASSWORD);
+    pos = 0;
     memset(ans, 0, maxNum);
     return true;
 }
 bool Opera_getUsrKey::deinit()
 {
+    STP_LCD::showNum("");
     return true;
 }
 bool Opera_getUsrKey::exitCheck()
@@ -267,13 +179,17 @@ bool Opera_getUsrKey::exitCheck()
         while (keymat->scan())
             ;
         ErrorCode = USR_Cancel;
-        ErrorStr = "Usr Cancel";
+        ErrorStr = (const char*)TEXT_CANCEL;
+        STP_LCD::showNum("");
+        memset(ans, 0, 6);
+        pos = 0;
         return true;
     } else if (keymat->isPress(STP_KeyMat::KEY_ID_YES) && pos == maxNum) {
         while (keymat->scan())
             ;
         ErrorCode = OK;
         ErrorStr = "Comfirme";
+        STP_LCD::showNum("");
         return true;
     } else if (keymat->isPress(STP_KeyMat::KEY_ID_YES)) {
         while (keymat->scan())
@@ -285,7 +201,17 @@ bool Opera_getUsrKey::exitCheck()
             ErrorStr = "Please input 4 char";
         else
             ErrorStr = "Please input right number of char";
-        return true;
+        STP_LCD::showNum("");
+        memset(ans, 0, 6);
+        pos = 0;
+        // opt1:用户错误需要提示的话应return true,在上一级函数中给予提示
+        // opt2:直接在当前位置输出字符串并延时保证显示时间
+        // opt3:不显示直接继续循环
+        return false;
+    }
+
+    if (_mode == getRoomID) {
+        switchTitle(TEXT_ROOMID);
     }
     return false;
 }
@@ -294,30 +220,35 @@ bool Opera_getUsrKey::loop()
     pos = 0;
     while (1) {
         if (keymat->scan()) {
-            if (keymat->isPress(STP_KeyMat::KEY_ID_0)) {
+            if (keymat->isPress(STP_KeyMat::KEY_ID_0) && pos < maxNum) {
                 ans[pos++] = '0';
-            } else if (keymat->isPress(STP_KeyMat::KEY_ID_1)) {
+            } else if (keymat->isPress(STP_KeyMat::KEY_ID_1) && pos < maxNum) {
                 ans[pos++] = '1';
-            } else if (keymat->isPress(STP_KeyMat::KEY_ID_2)) {
+            } else if (keymat->isPress(STP_KeyMat::KEY_ID_2) && pos < maxNum) {
                 ans[pos++] = '2';
-            } else if (keymat->isPress(STP_KeyMat::KEY_ID_3)) {
+            } else if (keymat->isPress(STP_KeyMat::KEY_ID_3) && pos < maxNum) {
                 ans[pos++] = '3';
-            } else if (keymat->isPress(STP_KeyMat::KEY_ID_4)) {
+            } else if (keymat->isPress(STP_KeyMat::KEY_ID_4) && pos < maxNum) {
                 ans[pos++] = '4';
-            } else if (keymat->isPress(STP_KeyMat::KEY_ID_5)) {
+            } else if (keymat->isPress(STP_KeyMat::KEY_ID_5) && pos < maxNum) {
                 ans[pos++] = '5';
-            } else if (keymat->isPress(STP_KeyMat::KEY_ID_6)) {
+            } else if (keymat->isPress(STP_KeyMat::KEY_ID_6) && pos < maxNum) {
                 ans[pos++] = '6';
-            } else if (keymat->isPress(STP_KeyMat::KEY_ID_7)) {
+            } else if (keymat->isPress(STP_KeyMat::KEY_ID_7) && pos < maxNum) {
                 ans[pos++] = '7';
-            } else if (keymat->isPress(STP_KeyMat::KEY_ID_8)) {
+            } else if (keymat->isPress(STP_KeyMat::KEY_ID_8) && pos < maxNum) {
                 ans[pos++] = '8';
-            } else if (keymat->isPress(STP_KeyMat::KEY_ID_9)) {
+            } else if (keymat->isPress(STP_KeyMat::KEY_ID_9) && pos < maxNum) {
                 ans[pos++] = '9';
             } else if (keymat->isPress(STP_KeyMat::KEY_ID_LEFT)) {
                 if (pos > 0) {
-                    ans[pos--] = '\0';
+                    ans[--pos] = '\0';
                 }
+            }
+            if (_mode != getPassword) {
+                STP_LCD::showNum((const char*)ans);
+            } else {
+                STP_LCD::showNum(STP_LCD::passwordLen(pos));
             }
             while (keymat->scan()) {
                 if (exitCheck())

@@ -2,8 +2,10 @@
 
 #include "DataBase.hpp"
 #include "stm32f4xx_hal.h"
+#include "GR307.h"
 #include <list>
 
+// FLASH 使用范围
 // Sector 1 0x0800 4000 - 0x0800 7FFF 16 Kbytes
 // Sector 2 0x0800 8000 - 0x0800 BFFF 16 Kbytes
 // Sector 3 0x0800 C000 - 0x0800 FFFF 16 Kbytes
@@ -54,6 +56,11 @@ public:
         // writeBack();
         delete arry;
     }
+
+    /**
+     * @brief  检查sheet是否含有该用户
+     * @retvl  找到返回该用户在list中的节点地址，否则返回NULL
+     */
     std::list<DB_Usr>::iterator search(const DB_Usr& usr) const
     {
         for (auto node = arry->begin(); node != arry->end(); node++) {
@@ -62,6 +69,11 @@ public:
         }
         return NULL;
     }
+
+    /**
+     * @brief  检查sheet是否有用户含有某项数据(密码、房间号、指纹等)
+     * @retvl  找到返回该用户在list中的节点地址，否则返回NULL
+     */
     std::list<DB_Usr>::iterator search(const DB_Base& db) const
     {
         for (auto node = arry->begin(); node != arry->end(); node++) {
@@ -70,16 +82,32 @@ public:
         }
         return NULL;
     }
+
+    /**
+     * @brief  添加一个用户
+     * @note   [不安全] 未检查该用户的房间ID已存在,需调用时额外有代码进行检查
+     */
     void add(const DB_Usr& usr)
     {
         arry->push_back(usr);
         modi = true;
     }
+    /**
+     * @brief  添加多个用户
+     * @note   [不安全] 未检查该用户的房间ID已存在,需调用时额外有代码进行检查
+     * @note   主要用于sheet在writeBack时将不能保存的用户放入下一个sector
+     */
     void add(std::list<DB_Usr>::iterator begin, std::list<DB_Usr>::iterator end)
     {
         arry->insert(arry->end(), begin, end);
         modi = true;
     }
+
+    /**
+     * @brief  删除一个用户
+     * @param  node 该用户在sheet的list中的位置
+     * @note   由于使用数据类型为链表，每次删除操作会重写整个sheet内容
+     */
     void del(std::list<DB_Usr>::iterator node)
     {
         bool isExit = false;
@@ -91,6 +119,12 @@ public:
         }
         if (!isExit)
             return;
+				// Delete data in GR307
+				for (int i = 0; i < 5; i++) {
+						uint8_t* buf = node->finger[i].data();
+						uint16_t id = *buf | (*(buf + 1) << 8);
+						GR307_Delete(id);
+				}
         std::list<DB_Usr>* new_arry = new std::list<DB_Usr>;
         for (auto n = arry->begin(); n != arry->end(); n++) {
             if (n != node) {
@@ -108,6 +142,13 @@ public:
     {
         if (arry->size())
             modi = true;
+				for (auto node : *arry) {
+          for (int i = 0; i < 5; i++) {
+						uint8_t* buf = node.finger[i].data();
+						uint16_t id = *buf | (*(buf + 1) << 8);
+						GR307_Delete(id);
+          }
+				}
         arry->clear();
     }
     /**
@@ -231,6 +272,9 @@ public:
         modi = false;
         return true;
     }
+    /**
+     * @brief  将枚举量转化为真实flash地址
+     */
     static const uint32_t* getSectorAddr(const enum DB_Sector& sector)
     {
         switch (sector) {
@@ -244,6 +288,10 @@ public:
             return (const uint32_t*)0x00;
         }
     }
+    /**
+     * @brief  基于基地址获取当前sector容纳的用户数据条数
+     * @note   未初始化的sector将返回结果:0
+     */
     static uint32_t getNodeNum(const uint32_t* baseAddr)
     {
         uint32_t num = *(baseAddr + 2);
@@ -251,11 +299,19 @@ public:
             return 150;
         return num;
     }
+    /**
+     * @brief  返回每个sector最大容量
+     * @note   测试起见,0x4000的sector只使用0x1000Bytes
+     */
     static uint32_t getMaxSize(const uint32_t* baseAddr)
     {
         // return 0x4000;
         return 0x1000;
     }
+    /**
+     * @brief  基于目前sector地址返回下一个sector地址
+     * @note   该函数的前提为Sheet使用sector是地址连续的
+     */
     static const uint32_t* getNextSector(const uint32_t* baseAddr)
     {
         return baseAddr + 0x4000 / sizeof(uint32_t);
@@ -265,5 +321,5 @@ private:
     std::list<DB_Usr>* arry;
     const uint32_t* base_addr;
     uint8_t password[6];
-    bool modi;
+    bool modi; // 标志用户信息是否改变(#1 search方法可能导致隐形的数据改动,该标志不会改变)
 };

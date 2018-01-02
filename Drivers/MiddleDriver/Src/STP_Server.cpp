@@ -1,5 +1,7 @@
 #include "STP_Server.hpp"
 
+extern void rec_callback(enum STP_ServerBase::CMD cmd);
+
 static STP_ServerBase* CurrentServerHandle = (STP_ServerBase*)NULL;
 static STP_ServerBase* STP_GetCurrentServer()
 {
@@ -19,19 +21,19 @@ void STP_ServerCallback()
 /** Class : Base ********************************************************/
 STP_ServerBase::STP_ServerBase() {}
 STP_ServerBase::~STP_ServerBase() {}
-bool STP_ServerBase::sendMessage(const uint8_t* message, size_t size)
+bool STP_ServerBase::sendMessage(enum CMD cmd, const uint8_t* message, size_t size)
 {
     uint8_t ans = 0;
-    uint8_t* pt = (uint8_t*)malloc(size + 4);
-    const uint8_t start_frame[2] = { 0xA5, 0x5A };
-    memcpy(pt, start_frame, 2);
-    memcpy(pt + 2, &size, 1);
-    memcpy(pt + 3, message, size);
+    uint8_t buffer[8];
+    buffer[0] = START_FRAME;
+    buffer[1] = (uint8_t)cmd;
+    buffer[2] = (uint8_t)size;
     for (int i = 0; i < size; i++) {
-        ans += message[i];
+        buffer[3 + i] = *message;
+        ans += *message++;
     }
-    memcpy(pt + 3 + size, &ans, 1);
-    return send(pt, size + 4);
+    buffer[3 + size] = ans;
+    return send(buffer, size + 4);
 }
 bool STP_ServerBase::reciMessage()
 {
@@ -63,12 +65,19 @@ bool STP_ServerRS485::setReminder()
 void STP_ServerRS485::Callback()
 {
     // 强制的起始帧检查，以防止发送方信息结构错误后不能正常接收下一帧
-    if (frameBuffer[0] == 0xA5 && recBuffer[0] == 0x5A) {
+    if (*recBuffer == START_FRAME) {
+        Recive_Status = waitCMD;
+    } else if (Recive_Status == waitCMD) {
+        CMDBuffer[0] = recBuffer[0];
         Recive_Status = waitSize;
     } else if (Recive_Status == waitSize) {
         sizeBuffer[0] = recBuffer[0];
-        Recive_Status = waitMessage;
         dataPos = 0;
+        if (sizeBuffer[0] != 0) {
+            Recive_Status = waitMessage;
+        } else {
+            Recive_Status = waitCheck;
+        }
     } else if (Recive_Status == waitMessage) {
         messageBuffer[dataPos] = recBuffer[0];
         if (++dataPos >= sizeBuffer[0]) {
@@ -78,7 +87,7 @@ void STP_ServerRS485::Callback()
         uint8_t ans = recBuffer[0];
         uint8_t _ans = 0;
         for (int i = 0; i < sizeBuffer[0]; i++) {
-            _ans += sizeBuffer[i];
+            _ans += messageBuffer[i];
         }
         if (ans == _ans) {
             goto GOT_A_MESSAGE;
@@ -89,10 +98,8 @@ void STP_ServerRS485::Callback()
 
 // 有效接受
 GOT_A_MESSAGE:
-
+    rec_callback((enum CMD)CMDBuffer[0]);
 NORMAL_OPERA:
-    // 将当前收到的数据填入帧头检查缓存
-    frameBuffer[0] = recBuffer[0];
     // 等待下一个字符
     setReminder();
 }

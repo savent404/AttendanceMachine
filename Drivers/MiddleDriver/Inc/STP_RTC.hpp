@@ -13,7 +13,9 @@ public:
     HAL_StatusTypeDef getTime(uint8_t& hour, uint8_t& min, uint8_t& sec)
     {
         static RTC_TimeTypeDef time;
+        RTC_DateTypeDef date;
         HAL_StatusTypeDef res = HAL_RTC_GetTime(handle, &time, RTC_FORMAT_BIN);
+        HAL_RTC_GetDate(handle, &date, RTC_FORMAT_BIN);
         hour = time.Hours;
         min = time.Minutes;
         sec = time.Seconds;
@@ -22,9 +24,19 @@ public:
     HAL_StatusTypeDef setTime(const uint8_t& hour, const uint8_t& min, const uint8_t& sec)
     {
         RTC_TimeTypeDef time;
+
         time.Hours = hour;
         time.Minutes = min;
         time.Seconds = sec;
+        if (time.Hours > 24) {
+            time.Hours = 0;
+        }
+        if (time.Minutes >= 60) {
+            time.Minutes = 0;
+        }
+        if (time.Seconds >= 60) {
+            time.Seconds = 0;
+        }
 
         return HAL_RTC_SetTime(handle, &time, RTC_FORMAT_BIN);
     }
@@ -32,4 +44,3 @@ public:
 private:
     RTC_HandleTypeDef* handle;
 };
-

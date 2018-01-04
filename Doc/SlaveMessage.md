@@ -54,11 +54,11 @@ dateFormat  SSS
 title Message Frame
 
 section Master
-StartFrame(0xEF)  :done, 000, 001
-CMD(1 Byte) :done, 001, 002
-Data Length(1 Byte) : done, 002, 003
-Data(Length Bytes) : done, 003, 004
-Check(1 Byte) :done, 004, 005
+Frame(0xEFEF)  :done, 000, 002
+CMD(1 Byte) :done, 002, 003
+Data Length(1 Byte) : done, 003, 004
+Data(n Bytes) : done, 004, 008
+Check(1 Byte=CMD+DataLen+Data) :done, 008, 009
 ```
 
 ## Message::CMD

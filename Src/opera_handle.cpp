@@ -99,7 +99,6 @@ void OP_Handle(void)
         delete op;
     }
 
-    // Goto welcome interface, waitting for "0 + down" and manager password
     while (1) {
         static uint8_t sec = 0;
         static bool refresh = true;
@@ -115,7 +114,6 @@ void OP_Handle(void)
             STP_LCD::send(LCD_WELCOME, strlen(LCD_WELCOME));
         }
         if (keyboard->isPress(STP_KeyMat::KEY_ID_0) && keyboard->isPress(STP_KeyMat::KEY_ID_DOWN)) {
-            STP_LCD::clear();
             while (keyboard->scan())
                 ;
             op = new Opera_getUsrKey(*keyboard, Opera_getUsrKey::getPassword);
@@ -129,6 +127,7 @@ void OP_Handle(void)
                 delete op;
                 continue;
             }
+            delete op;
         }
     }
 
@@ -158,6 +157,7 @@ void OP_Handle(void)
             sheet->writeBack();
             delete sheet;
             delete get;
+            delete Opera;
             continue;
         } else if (keyboard->isPress(STP_KeyMat::KEY_ID_NO)) {
             while (keyboard->scan())
@@ -188,7 +188,6 @@ void OP_Handle(void)
             ;
     GOTO_HANDLE:
         // Goto handle
-        STP_LCD::clear();
         switch (Mode) {
         case OPFinger: {
             if (Finger_Handle(subMode == Login ? false : true)) {

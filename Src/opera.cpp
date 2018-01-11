@@ -1,22 +1,5 @@
 #include "opera.hpp"
-
 extern STP_RTC* rtc;
-static void switchTitle(const char* originTitle)
-{
-    static uint8_t sec = 0;
-    uint8_t h, m, s;
-    char buffer[10];
-    rtc->getTime(h, m, s);
-    if (s != sec) {
-        sec = s;
-        if ((s % 4) < 2)
-            STP_LCD::setTitle(originTitle);
-        else {
-            sprintf(buffer, "%02d:%02d:%02d", h, m, s);
-            STP_LCD::setTitle(buffer);
-        }
-    }
-}
 
 /*********************************************
  * @name   Opera_getNFC
@@ -30,7 +13,7 @@ Opera_getNFC::Opera_getNFC(STP_KeyMat& kb)
 }
 bool Opera_getNFC::init()
 {
-    STP_LCD::clear();
+    GUI_InputNFC(*rtc, -1);
     nfc = new Adafruit_NFCShield_I2C(
         Adafruit_NFCShield_I2C::STM32_Pin(PN532_RDY_GPIO_Port, PN532_RDY_Pin),
         Adafruit_NFCShield_I2C::STM32_Pin((GPIO_TypeDef*)NULL, 0),
@@ -59,13 +42,12 @@ bool Opera_getNFC::deinit()
 bool Opera_getNFC::exitCheck()
 {
     if (keymat->isPress(STP_KeyMat::KEY_ID_NO)) {
-				while (keymat->scan())
-					;
+        while (keymat->scan())
+            GUI_InputNFC(*rtc, 1);
         ErrorCode = USR_Cancel;
         ErrorStr = "Usr Cancel";
         return true;
     }
-    switchTitle(TEXT_NFC_001);
     return false;
 }
 bool Opera_getNFC::loop()
@@ -77,6 +59,7 @@ bool Opera_getNFC::loop()
             memcpy(ans, uid, 4);
             return true;
         }
+        GUI_InputNFC(*rtc, 1);
         if (exitCheck()) {
             return false;
         }
@@ -88,16 +71,16 @@ bool Opera_getNFC::loop()
  * @brief  对比一个指纹或者注册一个新的到指纹库
  * @note   过程中响应退出事件
  */
-Opera_getFinger::Opera_getFinger(STP_KeyMat& kb, bool isCheck = true)
+Opera_getFinger::Opera_getFinger(STP_KeyMat& kb, uint8_t th)
     : Opera(2)
-    , _isCheck(isCheck)
+    , _th(th)
 {
-    STP_LCD::clear();
     keymat = &kb;
 }
 bool Opera_getFinger::init()
 {
     uint8_t error = GR307_Init();
+    GUI_InputFinger(*rtc, -1, false, _th);
     if (error != 0) {
         ErrorCode = DRIVER_Error;
         ErrorStr = GR307_getErrorMsg(error);
@@ -113,18 +96,17 @@ bool Opera_getFinger::deinit()
 bool Opera_getFinger::exitCheck()
 {
     if (keymat->isPress(STP_KeyMat::KEY_ID_NO)) {
-			while(keymat->scan())
-				;
+        while(keymat->scan())
+            GUI_InputFinger(*rtc, 1, false, _th);
         ErrorCode = USR_Cancel;
         ErrorStr = "Usr Cancel";
         return true;
     }
-    switchTitle(TEST_FINGER_001);
     return false;
 }
 bool Opera_getFinger::loop()
 {
-    uint16_t id;
+    uint16_t id, cnt = 1;
     while (1) {
         if (HAL_GPIO_ReadPin(R307_INT_GPIO_Port, R307_INT_Pin) == GPIO_PIN_RESET) {
             uint8_t error = 0;
@@ -139,11 +121,11 @@ bool Opera_getFinger::loop()
                 return false;
             }
             memcpy(ans, &id, 2);
-            STP_LCD::showMessage(TEXT_FINGER_002);
             while (HAL_GPIO_ReadPin(R307_INT_GPIO_Port, R307_INT_Pin) == GPIO_PIN_RESET)
-                ;
+                GUI_InputFinger(*rtc, 1, true, _th);
             return true;
         }
+        GUI_InputFinger(*rtc, 1, false, _th);
         if (exitCheck()) {
             return false;
         }
@@ -174,9 +156,11 @@ bool Opera_getUsrKey::init()
 {
     memset(ans, 0, maxNum);
     if (_mode == getTime)
-        STP_LCD::setTitle(TEXT_TIME);
+        GUI_InputTime(*rtc, -1, "");
     if (_mode == getPassword)
-        STP_LCD::setTitle(TEXT_PASSWORD);
+        GUI_InputPassword(*rtc, -1, 0)
+    if (_mode == getRoomID)
+		GUI_InputRoomID(*rtc, -1, "");
     pos = 0;
     return true;
 }
@@ -258,11 +242,18 @@ bool Opera_getUsrKey::loop()
                     ans[--pos] = '\0';
                 }
             }
-            if (_mode != getPassword) {
-                STP_LCD::showNum((const char*)ans);
-            } else {
-                STP_LCD::showNum(STP_LCD::passwordLen(pos));
-            }
+			switch(_mode)
+			{
+				case getRoomID:
+					GUI_InputRoomID(*rtc, 0, ans);
+					break;
+				case getPassword:
+					GUI_InputPassword(*rtc, 0, pos);
+					break;
+				case getTime:
+					GUI_InputTime(*rtc, 0, ans);
+					break;
+			}
             while (keymat->scan()) {
                 if (exitCheck())
                     return false;

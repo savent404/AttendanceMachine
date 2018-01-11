@@ -47,31 +47,15 @@ public:
     {
         send(LCD_CLEAR, strlen(LCD_CLEAR));
     }
-    static void showTime(uint8_t h, uint8_t m, uint8_t s)
+    static void showTime(uint8_t size, int x1, int y1, int x2, uint8_t h, uint8_t m, uint8_t s)
     {
         char time[6];
         sprintf(time, "%02d:%02d:%02d", h, m, s);
-        showLabel(48, 330, 200, 530, time, 1);
+        showLabel(size, x1, y1, x2, time, 1);
     }
-    static void setTitle(const char* title)
-    {
-        showLabel(48, 230, 70, 640, title, 1);
-    }
-    static void showNum(const char* str, size_t maxlen = 0)
-    {
-        if (maxlen != 0) {
-            char buffer[50];
-            strncpy(buffer, str, maxlen);
-            buffer[maxlen] = '\0';
-            showLabel(48, 350, 160, 510, buffer, 1);
-
-        } else
-            showLabel(48, 350, 160, 510, str, 1);
-    }
-
     static void showMessage(const char* message)
     {
-        showLabel(48, 0, 250, 850, message, 1);
+        showLabel(32, 0, 250, 850, message, 1);
     }
     static const char* passwordLen(size_t len)
     {

@@ -133,8 +133,7 @@ void OP_Handle(void)
 
     while (1) {
         // Choose Mode
-        STP_LCD::clear();
-        STP_LCD::showMessage(TEXT_CHOOSE_MODE_1);
+        GUI_ChooseMode(*rtc, -1);
     CHOOSE_MODE:
         if (keyboard->isPress(STP_KeyMat::KEY_ID_0)) {
             Mode = OPFinger;
@@ -170,8 +169,7 @@ void OP_Handle(void)
             ;
         // Choose submode
     CHOOSE_SUBMODE_STRING:
-        STP_LCD::clear();
-        STP_LCD::showMessage(TEXT_CHOOSE_MODE_2);
+        GUI_ChooseSubMode(*rtc, -1);
     CHOOSE_SUBMODE:
         if (keyboard->isPress(STP_KeyMat::KEY_ID_0)) {
             subMode = Login;

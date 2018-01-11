@@ -12,16 +12,15 @@
 
 extern "C" void OP_Handle();
 
-
-extern void GUI_Welcom(STP_RTC & rtc, int32_t timeDelay);
-extern void GUI_Working(STP_RTC & rtc, int32_t timeDelay, const char * roomID);
-extern void GUI_InputFinger(STP_RTC & rtc, int32_t timeDelay, bool isPress, uint32_t idth = 0);
-extern void GUI_InputNFC(STP_RTC & rtc, int32_t timeDelay);
-extern void GUI_InputPassword(STP_RTC & rtc, int32_t timeDelay, char intputLen = 0);
-extern void GUI_InputRoomID(STP_RTC & rtc, int32_t timeDelay, const char * meesage);
-extern void GUI_InputTime(STP_RTC & rtc, int32_t timeDelay, const char * inputChar);
-extern void GUI_ChooseMode(STP_RTC & rtc, int32_t timeDelay);
-extern void GUI_ChooseSubMode(STP_RTC & rtc, int32_t timeDelay);
+extern void GUI_Welcom(STP_RTC& rtc, int32_t timeDelay);
+extern void GUI_Working(STP_RTC& rtc, int32_t timeDelay, const char* roomID);
+extern void GUI_InputFinger(STP_RTC& rtc, int32_t timeDelay, bool isPress, uint32_t idth = 0);
+extern void GUI_InputNFC(STP_RTC& rtc, int32_t timeDelay);
+extern void GUI_InputPassword(STP_RTC& rtc, int32_t timeDelay, char intputLen = 0);
+extern void GUI_InputRoomID(STP_RTC& rtc, int32_t timeDelay, const char* meesage);
+extern void GUI_InputTime(STP_RTC& rtc, int32_t timeDelay, const char* inputChar);
+extern void GUI_ChooseMode(STP_RTC& rtc, int32_t timeDelay);
+extern void GUI_ChooseSubMode(STP_RTC& rtc, int32_t timeDelay);
 
 class Opera {
 public:

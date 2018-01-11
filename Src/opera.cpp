@@ -96,7 +96,7 @@ bool Opera_getFinger::deinit()
 bool Opera_getFinger::exitCheck()
 {
     if (keymat->isPress(STP_KeyMat::KEY_ID_NO)) {
-        while(keymat->scan())
+        while (keymat->scan())
             GUI_InputFinger(*rtc, 1, false, _th);
         ErrorCode = USR_Cancel;
         ErrorStr = "Usr Cancel";
@@ -158,9 +158,9 @@ bool Opera_getUsrKey::init()
     if (_mode == getTime)
         GUI_InputTime(*rtc, -1, "");
     if (_mode == getPassword)
-        GUI_InputPassword(*rtc, -1, 0)
+        GUI_InputPassword(*rtc, -1, 0);
     if (_mode == getRoomID)
-		GUI_InputRoomID(*rtc, -1, "");
+            GUI_InputRoomID(*rtc, -1, "");
     pos = 0;
     return true;
 }
@@ -242,18 +242,17 @@ bool Opera_getUsrKey::loop()
                     ans[--pos] = '\0';
                 }
             }
-			switch(_mode)
-			{
-				case getRoomID:
-					GUI_InputRoomID(*rtc, 0, ans);
-					break;
-				case getPassword:
-					GUI_InputPassword(*rtc, 0, pos);
-					break;
-				case getTime:
-					GUI_InputTime(*rtc, 0, ans);
-					break;
-			}
+            switch (_mode) {
+            case getRoomID:
+                GUI_InputRoomID(*rtc, 0, ans);
+                break;
+            case getPassword:
+                GUI_InputPassword(*rtc, 0, pos);
+                break;
+            case getTime:
+                GUI_InputTime(*rtc, 0, ans);
+                break;
+            }
             while (keymat->scan()) {
                 if (exitCheck())
                     return false;

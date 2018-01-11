@@ -75,7 +75,7 @@ public:
      */
     bool operator==(const DB_Base& other) const
     {
-        if (type() != other.type() || size() != other.size() || other.isNull()) {
+        if (type() != other.type() || size() != other.size() /*|| other.isNull()*/) {
             return false;
         }
 

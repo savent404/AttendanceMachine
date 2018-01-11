@@ -106,11 +106,11 @@ bool Opera_getFinger::exitCheck()
 }
 bool Opera_getFinger::loop()
 {
-    uint16_t id, cnt = 1;
+    uint16_t id;
     while (1) {
         if (HAL_GPIO_ReadPin(R307_INT_GPIO_Port, R307_INT_Pin) == GPIO_PIN_RESET) {
             uint8_t error = 0;
-            if (_isCheck) {
+            if (_th == 0) {
                 error = GR307_Check(&id);
             } else {
                 error = GR307_Register(&id);
@@ -125,6 +125,7 @@ bool Opera_getFinger::loop()
                 GUI_InputFinger(*rtc, 1, true, _th);
             return true;
         }
+        GUI_InputFinger(*rtc, 1, true, _th);
         GUI_InputFinger(*rtc, 1, false, _th);
         if (exitCheck()) {
             return false;
@@ -156,18 +157,16 @@ bool Opera_getUsrKey::init()
 {
     memset(ans, 0, maxNum);
     if (_mode == getTime)
-        GUI_InputTime(*rtc, -1, "");
+        GUI_InputTime(*rtc, -1, "\0\0\0\0\0\0");
     if (_mode == getPassword)
         GUI_InputPassword(*rtc, -1, 0);
     if (_mode == getRoomID)
-            GUI_InputRoomID(*rtc, -1, "");
+        GUI_InputRoomID(*rtc, -1, "");
     pos = 0;
     return true;
 }
 bool Opera_getUsrKey::deinit()
 {
-    STP_LCD::setTitle("");
-    STP_LCD::showNum("");
     return true;
 }
 bool Opera_getUsrKey::exitCheck()
@@ -177,7 +176,6 @@ bool Opera_getUsrKey::exitCheck()
             ;
         ErrorCode = USR_Cancel;
         ErrorStr = "Usr Cancel";
-        STP_LCD::showNum("");
         memset(ans, 0, 6);
         pos = 0;
         return true;
@@ -186,7 +184,6 @@ bool Opera_getUsrKey::exitCheck()
             ;
         ErrorCode = OK;
         ErrorStr = "Comfirme";
-        STP_LCD::showNum("");
         return true;
     } else if (keymat->isPress(STP_KeyMat::KEY_ID_YES) && pos != maxNum) {
         while (keymat->scan())
@@ -198,17 +195,12 @@ bool Opera_getUsrKey::exitCheck()
             ErrorStr = "Please input 4 char";
         else
             ErrorStr = "Please input right number of char";
-        STP_LCD::showNum("");
         memset(ans, 0, 6);
         pos = 0;
         // opt1:用户错误需要提示的话应return true,在上一级函数中给予提示
         // opt2:直接在当前位置输出字符串并延时保证显示时间
         // opt3:不显示直接继续循环
         return false;
-    }
-
-    if (_mode == getRoomID) {
-        switchTitle(TEXT_ROOMID);
     }
     return false;
 }
@@ -244,13 +236,13 @@ bool Opera_getUsrKey::loop()
             }
             switch (_mode) {
             case getRoomID:
-                GUI_InputRoomID(*rtc, 0, ans);
+                GUI_InputRoomID(*rtc, 0, (char*)ans);
                 break;
             case getPassword:
                 GUI_InputPassword(*rtc, 0, pos);
                 break;
             case getTime:
-                GUI_InputTime(*rtc, 0, ans);
+                GUI_InputTime(*rtc, 0, (char*)ans);
                 break;
             }
             while (keymat->scan()) {
@@ -258,6 +250,18 @@ bool Opera_getUsrKey::loop()
                     return false;
             }
         }
+        switch (_mode) {
+        case getRoomID:
+            GUI_InputRoomID(*rtc, 1, (char*)ans);
+            break;
+        case getPassword:
+            GUI_InputPassword(*rtc, 1, pos);
+            break;
+        case getTime:
+            GUI_InputTime(*rtc, 1, (char*)ans);
+            break;
+        }
+
         if (exitCheck()) {
             return false;
         }

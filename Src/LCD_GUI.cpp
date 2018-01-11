@@ -1,19 +1,20 @@
 #include "STP_LCD.hpp"
 #include "STP_RTC.hpp"
-
-void GUI_Welcom(STP_RTC& rtc, int32_t timeDelay)
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+void GUI_Welcome(STP_RTC& rtc, int32_t timeDelay)
 {
     static uint8_t s_sec = 0;
-    uint8_t, h, m, s;
+    uint8_t h, m, s;
     rtc.getTime(h, m, s);
-    if (!timeDelay) {
+    if (timeDelay < 0) {
         STP_LCD::clear();
-        STP_LCD::showLabel(32, 230, 75, 640, "ä¸Šæµ·xxxè®¾å¤‡åˆ¶é€ æœ‰é™å…¬å¸", 1);
-        STP_LCD::showLabel(48, 230, 335, 640, "æ™ºèƒ½å®¶å±…ï¼Œå®‰å…¨å‡ºè¡Œ, 1");
-        STP_LCD::showLabel(16, 0, 0, 300, "æŒ‰ä¸‹'0'+'DOWN'è¾“å…¥ç®¡ç†å‘˜å¯†ç ");
-    }
-    if ((s - s_sec) % 60 < timeDelay)
-        continue;
+        STP_LCD::showLabel(32, 230, 75, 640, "ÉÏº£xxxÉè±¸ÖÆÔìÓÐÏÞ¹«Ë¾", 1);
+        STP_LCD::showLabel(48, 230, 335, 640, "ÖÇÄÜ¼Ò¾Ó£¬°²È«³öÐÐ", 1);
+        STP_LCD::showLabel(16, 0, 20, 300, "°´ÏÂ 0 + DOWN ÊäÈë¹ÜÀíÔ±ÃÜÂë", 0);
+    } else if (((s - s_sec) % 60) < timeDelay)
+        return;
     STP_LCD::showTime(48, 330, 200, 530, h, m, s);
     s_sec = s;
 }
@@ -23,20 +24,20 @@ void GUI_InputFinger(STP_RTC& rtc, int32_t timeDelay, bool isPress, uint32_t idt
     static uint8_t s_sec = 0;
     uint8_t h, m, s;
     rtc.getTime(h, m, s);
-    if (!timeDelay) {
+    if (timeDelay < 0) {
         STP_LCD::clear();
         char buffer[20];
-        sprintf(buffer, "è¯·æŒ‰ä¸‹æŒ‡çº¹(%01d)", idth);
+        sprintf(buffer, "Çë°´ÏÂÖ¸ÎÆ(%01d)", idth);
         if (!idth)
-            STP_LCD::showLabel(32, 230, 75, 640, "è¯·æŒ‰ä¸‹æŒ‡çº¹", 1);
+            STP_LCD::showLabel(32, 230, 75, 640, "Çë°´ÏÂÖ¸ÎÆ", 1);
         else
             STP_LCD::showLabel(32, 230, 75, 640, buffer, 1);
-        STP_LCD::showLabel(16, 0, 0, 300, "æŒ‰ä¸‹'no'å–æ¶ˆ");
-    }
-    if ((s - s_sec) % 60 < timeDelay)
-        continue;
+        STP_LCD::showLabel(16, 0, 20, 300, "°´ÏÂ no È¡Ïû", 0);
+    } else if (((s - s_sec) % 60) < timeDelay)
+        return;
+
     if (isPress) {
-        STP_LCD::showLabel(32, 0, 300, 850, "OK!è¯·æ¾å¼€", 1);
+        STP_LCD::showLabel(32, 0, 300, 850, "OK!ÇëËÉ¿ª", 1);
     }
     STP_LCD::showTime(48, 330, 200, 530, h, m, s);
     s_sec = s;
@@ -48,13 +49,12 @@ void GUI_InputNFC(STP_RTC& rtc, int32_t timeDelay)
     uint8_t h, m, s;
     rtc.getTime(h, m, s);
 
-    if (!timeDelay) {
+    if (timeDelay < 0) {
         STP_LCD::clear();
-        STP_LCD::showLabel(32, 230, 75, 640, "è¯·åˆ·å¡", 1);
-        STP_LCD::showLabel(16, 0, 0, 300, "æŒ‰ä¸‹'no'å–æ¶ˆ");
-    }
-    if ((s - s_sec) % 60 < timeDelay)
-        continue;
+        STP_LCD::showLabel(32, 230, 75, 640, "ÇëË¢¿¨", 1);
+        STP_LCD::showLabel(16, 0, 20, 300, "°´ÏÂ no È¡Ïû", 0);
+    } else if (((s - s_sec) % 60) < timeDelay)
+        return;
     STP_LCD::showTime(48, 330, 200, 530, h, m, s);
     s_sec = s;
 }
@@ -67,11 +67,10 @@ void GUI_InputRoomID(STP_RTC& rtc, int32_t timeDelay, const char* meesage)
 
     if (timeDelay < 0) {
         STP_LCD::clear();
-        STP_LCD::showLabel(32, 230, 75, 640, "è¯·è¾“å…¥æˆ¿é—´ID", 1);
-        STP_LCD::showLabel(16, 0, 0, 300, "æŒ‰ä¸‹'no'å–æ¶ˆ");
-    }
-    if ((s - s_sec) % 60 < timeDelay)
-        continue;
+        STP_LCD::showLabel(32, 230, 75, 640, "ÇëÊäÈë·¿¼äID", 1);
+        STP_LCD::showLabel(16, 0, 20, 300, "°´ÏÂ no È¡Ïû", 0);
+    } else if (((s - s_sec) % 60) < timeDelay)
+        return;
     STP_LCD::showTime(48, 330, 200, 530, h, m, s);
     STP_LCD::showLabel(32, 0, 300, 850, meesage, 1);
     s_sec = s;
@@ -82,16 +81,14 @@ void GUI_InputPassword(STP_RTC& rtc, int32_t timeDelay, char intputLen = 0)
     static uint8_t s_sec = 0;
     uint8_t h, m, s;
     rtc.getTime(h, m, s);
-    if (!timeDelay) {
+    if (timeDelay < 0) {
         STP_LCD::clear();
-        STP_LCD::showLabel(32, 230, 75, 640, "è¯·æŒ‰ä¸‹æŒ‡çº¹", 1);
-        STP_LCD::showLabel(16, 0, 0, 300, "æŒ‰ä¸‹'no'å–æ¶ˆ");
-        STP_LCD::showLabel(16, 0, 30, 300, "æŒ‰ä¸‹æŒ‡çº¹æ—¶è¯·å°½é‡ä½¿ç”¨æ‰‹æŒ‡ä¸­å¿ƒæŒ‰ä¸‹");
-    }
-    if ((s - s_sec) % 60 < timeDelay)
-        continue;
+        STP_LCD::showLabel(32, 230, 75, 640, "ÇëÊäÈëÃÜÂë", 1);
+        STP_LCD::showLabel(16, 0, 20, 300, "°´ÏÂ no È¡Ïû", 0);
+    } else if (((s - s_sec) % 60) < timeDelay)
+        return;
     // STP_LCD::showTime(48, 330, 200, 530, h, m, s);
-    STP_LCD::showLabel(32, 0, 300, 850, STP_LCD::passwordLen(intputLen));
+    STP_LCD::showLabel(32, 0, 300, 850, STP_LCD::passwordLen(intputLen), 1);
     s_sec = s;
 }
 
@@ -100,14 +97,13 @@ void GUI_ChooseMode(STP_RTC& rtc, int32_t timeDelay)
     static uint8_t s_sec = 0;
     uint8_t h, m, s;
     rtc.getTime(h, m, s);
-    if (!timeDelay) {
+    if (timeDelay < 0) {
         STP_LCD::clear();
-        STP_LCD::showLabel(32, 230, 75, 640, "è¯·é€‰æ‹©ç™»å…¥æ¨¡å¼", 1);
-        STP_LCD::showLabel(16, 0, 0, 300, "æŒ‰ä¸‹'no'å–æ¶ˆ");
-        STP_LCD::showLabel(16, 0, 30, 300, "æŒ‰é”® 0:æŒ‡çº¹ 1:åˆ·å¡ 2:å¯†ç æ¨¡å¼");
-    }
-    if ((s - s_sec) % 60 < timeDelay)
-        continue;
+        STP_LCD::showLabel(32, 230, 75, 640, "ÇëÑ¡ÔñµÇÈëÄ£Ê½", 1);
+        STP_LCD::showLabel(16, 0, 20, 300, "°´ÏÂ no È¡Ïû", 0);
+        STP_LCD::showLabel(16, 0, 40, 300, "°´¼ü 0:Ö¸ÎÆ 1:Ë¢¿¨ 2:ÃÜÂëÄ£Ê½", 0);
+    } else if (((s - s_sec) % 60) < timeDelay)
+        return;
     s_sec = s;
 }
 
@@ -116,50 +112,40 @@ void GUI_ChooseSubMode(STP_RTC& rtc, int32_t timeDelay)
     static uint8_t s_sec = 0;
     uint8_t h, m, s;
     rtc.getTime(h, m, s);
-    if (!timeDelay) {
+    if (timeDelay < 0) {
         STP_LCD::clear();
-        STP_LCD::showLabel(32, 230, 75, 640, "è¯·é€‰æ‹©ç™»å…¥/æ³¨å†Œ", 1);
-        STP_LCD::showLabel(16, 0, 0, 300, "æŒ‰ä¸‹'no'å–æ¶ˆ");
-        STP_LCD::showLabel(16, 0, 30, 300, "æŒ‰é”® 0:ç™»å…¥ 1:æ³¨å†Œ");
-    }
-    if ((s - s_sec) % 60 < timeDelay)
-        continue;
+        STP_LCD::showLabel(32, 230, 75, 640, "ÇëÑ¡ÔñµÇÈë/×¢²á", 1);
+        STP_LCD::showLabel(16, 0, 20, 300, "°´ÏÂ no È¡Ïû", 0);
+        STP_LCD::showLabel(16, 0, 40, 300, "°´¼ü 0:µÇÈë 1:×¢²á", 0);
+    } else if (((s - s_sec) % 60) < timeDelay)
+        return;
     s_sec = s;
 }
 
 void GUI_InputTime(STP_RTC& rtc, int32_t timeDelay, const char* inputChar)
 {
-    char time[3][3] = { "", "", "" };
     uint8_t h, m, s;
     static uint8_t s_sec = 0;
     rtc.getTime(h, m, s);
 
     if (timeDelay < 0) {
         STP_LCD::clear();
-        STP_LCD::showLabel(32, 230, 75, 640, "è¯·è¾“å…¥å½“å‰æ—¶é—´", 1);
-    }
+        STP_LCD::showLabel(32, 230, 75, 640, "ÇëÊäÈëÊ±¼ä", 1);
+    } else if (((s - s_sec) % 60) < timeDelay)
+        return;
 
-    if (strlen(inputChar) >= 2) {
-        time[0][0] = inputChar[0];
-        time[0][1] = inputChar[1];
-        time[0][2] = '\0';
+    char buffer[9] = "";
+    for (int i = 0; i < 6; i++) {
+        if (*(inputChar + i) == '\0')
+            strcat(buffer, " ");
+        else {
+            char b[2] = { *(inputChar + i), '\0' };
+            strcat(buffer, b);
+        }
+        if (i < 5 && (i % 2) == 1) {
+            strcat(buffer, ":");
+        }
     }
-    if (strlen(inputChar) >= 4) {
-        time[1][0] = inputChar[2];
-        time[1][1] = inputChar[3];
-        time[1][2] = '\0';
-    }
-    if (strlen(inputChar) >= 6) {
-        time[2][0] = inputChar[4];
-        time[2][1] = inputChar[5];
-        time[2][2] = '\0';
-    }
-    char buffer[10] = "";
-    strcat(buffer, time[0][0] == '\0' ? "  " : time[0]);
-    strcat(buffer, ":");
-    strcat(buffer, time[1][0] == '\0' ? "  " : time[1]);
-    strcat(buffer, ":");
-    strcat(buffer, time[2][0] == '\0' ? "  " : time[2]);
     STP_LCD::showLabel(48, 0, 300, 850, buffer, 1);
 }
 
@@ -171,9 +157,58 @@ void GUI_Working(STP_RTC& rtc, int32_t timeDelay, const char* roomID)
 
     if (timeDelay < 0) {
         STP_LCD::clear();
-        STP_LCD::showLabel(32, 230, 75, 640, "æ­£åœ¨æ“ä½œ...");
+        STP_LCD::showLabel(32, 230, 75, 640, "ÕýÔÚ²Ù×÷ÖÐ", 1);
+    } else if (((s - s_sec) % 60) < timeDelay)
+        return;
+    char buffer[5] = { roomID[0], roomID[1], roomID[2], roomID[3], '\0' };
+    STP_LCD::showLabel(32, 230, 300, 640, buffer, 1);
+}
+void GUI_Operation(STP_RTC& rtc, int32_t timeDelay, uint8_t up_down_left_right)
+{
+    static uint8_t s_sec = 0;
+    uint8_t h, m, s;
+    rtc.getTime(h, m, s);
+
+    if (timeDelay < 0) {
+        STP_LCD::clear();
+        STP_LCD::showLabel(32, 230, 75, 640, "ÇëÐ¡ÐÄ²Ù×÷", 1);
+        STP_LCD::showLabel(16, 0, 20, 300, "°´ÏÂÉÏÏÂ×óÓÒ²Ù×÷,µã»÷ yes È·ÈÏ", 0);
+    } else if (((s - s_sec) % 60) < timeDelay)
+        return;
+
+    bool flag = false;
+    char buffer[20] = "";
+
+    if (up_down_left_right & 0x01) {
+        flag = true;
+        strcat(buffer, "ÉÏ");
     }
-    if ((s - s_sec) % 60 < timeDelay)
-        continue;
-    STP_LCD::showLabel(32, 230, 300, 640, roomID);
+
+    if (up_down_left_right & 0x02) {
+        if (flag == false) {
+            flag = true;
+        } else {
+            strcat(buffer, "+");
+        }
+        strcat(buffer, "ÏÂ");
+    }
+
+    if (up_down_left_right & 0x04) {
+        if (flag == false) {
+            flag = true;
+        } else {
+            strcat(buffer, "+");
+        }
+        strcat(buffer, "×ó");
+    }
+
+    if (up_down_left_right & 0x08) {
+        if (flag == false) {
+            flag = true;
+        } else {
+            strcat(buffer, "+");
+        }
+        strcat(buffer, "ÓÒ");
+    }
+    STP_LCD::showLabel(32, 0, 300, 850, buffer, 1);
 }

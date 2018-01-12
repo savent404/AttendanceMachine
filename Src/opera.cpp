@@ -36,7 +36,6 @@ bool Opera_getNFC::init()
 bool Opera_getNFC::deinit()
 {
     delete nfc;
-    STP_LCD::clear();
     return true;
 }
 bool Opera_getNFC::exitCheck()
@@ -125,7 +124,6 @@ bool Opera_getFinger::loop()
                 GUI_InputFinger(*rtc, 1, true, _th);
             return true;
         }
-        GUI_InputFinger(*rtc, 1, true, _th);
         GUI_InputFinger(*rtc, 1, false, _th);
         if (exitCheck()) {
             return false;

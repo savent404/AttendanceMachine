@@ -102,6 +102,7 @@ void GUI_ChooseMode(STP_RTC& rtc, int32_t timeDelay)
         STP_LCD::showLabel(32, 230, 75, 640, "请选择登入模式", 1);
         STP_LCD::showLabel(16, 0, 20, 300, "按下 no 取消", 0);
         STP_LCD::showLabel(16, 0, 40, 300, "按键 0:指纹 1:刷卡 2:密码模式", 0);
+        STP_LCD::showLabel(16, 0, 60, 300, "按键 3:修改管理员密码 4:清空数据", 0);
     } else if (((s - s_sec) % 60) < timeDelay)
         return;
     s_sec = s;

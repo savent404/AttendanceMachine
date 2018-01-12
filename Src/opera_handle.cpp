@@ -1,5 +1,13 @@
 #include "opera.hpp"
 
+/** 说明
+ *  - 所有c++ class 尽量使用指针 new/delete
+ *      原因是只占用heap,方便查找问题以及内存控制
+ *  - 三种登入模式独立一个函数
+ *      操作相对独立，且便于后期更改
+ */
+
+// 全局对象, 在OP_Handle开头初始化
 STP_ServerBase* server;
 STP_KeyMat* keyboard;
 STP_RTC* rtc;
@@ -62,20 +70,25 @@ void OP_Handle(void)
     keyboard = new STP_KeyMat;
     rtc = new STP_RTC(&hrtc);
     Opera* op;
+
     enum {
         OPFinger = 0,
         OPNFC = 1,
         OPKey = 2
     } Mode
         = OPFinger;
+
     enum {
         Login = 0,
         Regist = 1
     } subMode
         = Login;
 
+    // Enable recive slave's message
     server->reciMessage();
 
+    // Software Reset flag
+    // 若软件执行的复位,该标志为1。代表当前为重启，不需要重新设定时间
     if (__HAL_RCC_GET_FLAG(RCC_FLAG_SFTRST) == 0) {
         // Setting the RTC parameter
         op = new Opera_getUsrKey(*keyboard, Opera_getUsrKey::getTime);
@@ -98,6 +111,7 @@ void OP_Handle(void)
         }
         delete op;
     }
+
 WELCOME_FRESH:
     GUI_Welcome(*rtc, -1);
     while (1) {
@@ -141,6 +155,7 @@ WELCOME_FRESH:
             Opera* get = new Opera_getUsrKey(*keyboard, Opera_getUsrKey::getPassword);
             do {
                 get->init();
+                STP_LCD::showMessage("Change Root Password");
                 get->loop();
             } while (get->getResCode() != Opera::OK);
             get->deinit();
@@ -150,30 +165,30 @@ WELCOME_FRESH:
             delete sheet;
             delete get;
             continue;
-        } else if (keyboard->isPress(STP_KeyMat::KEY_ID_NO)) {
-            while (keyboard->scan())
-                ;
-            continue;
         } else if (keyboard->isPress(STP_KeyMat::KEY_ID_4)) {
             uint8_t h, m, s;
             uint8_t sh, sm, ss;
             rtc->getTime(h, m, s);
+            STP_LCD::showMessage("Press 5 sec to erase flash");
             while (keyboard->isPress(STP_KeyMat::KEY_ID_4)) {
                 rtc->getTime(sh, sm, ss);
-                STP_LCD::showMessage("Press 5 sec to erase flash");
-                if (sm * 60 + ss - m * 60 - s > 5) {
-                    for (int i = 0; i < 3; i++) {
-                        DB_Sheet* sheet = new DB_Sheet((enum DB_Sheet::DB_Sector)i);
-                        sheet->clear();
-                        sheet->writeBack();
-                        delete sheet;
-                    }
-                    STP_LCD::showMessage("Flash清空OK");
-                    HAL_Delay(2000);
+                if (sm * 60 + ss - m * 60 - s > 5)
                     break;
-                }
             }
-
+            if (sm * 60 + ss - m * 60 - s > 5) {
+                for (int i = 0; i < 3; i++) {
+                    DB_Sheet* sheet = new DB_Sheet((enum DB_Sheet::DB_Sector)i);
+                    sheet->clear();
+                    sheet->writeBack();
+                    delete sheet;
+                }
+                STP_LCD::showMessage("Flash erase OK");
+                HAL_Delay(2000);
+            }
+            while (keyboard->scan())
+                ;
+            continue;
+        } else if (keyboard->isPress(STP_KeyMat::KEY_ID_NO)) {
             while (keyboard->scan())
                 ;
             continue;
@@ -284,7 +299,6 @@ static bool NFC_Handle(bool isRegist)
         if (node != NULL && node->rfid.isNull() == false) {
         TRY_PASSWORD:
             // Warnning if usr wanna replace the ID
-
             get_password->init();
             STP_LCD::showMessage(TEXT_REPLACE);
             get_password->loop();
@@ -399,13 +413,6 @@ static bool Finger_Handle(bool isRegist)
     for (int i = 0; i < ((isRegist == true) ? 5 : 1);) {
         Opera_getFinger get_finger(*keyboard, isRegist == true ? i + 1 : 0);
         get_finger.init();
-        if (isRegist) {
-            char buffer[2] = { 0x00, 0x00 };
-            buffer[0] = '1' + i;
-            STP_LCD::showMessage(buffer);
-        } else {
-            STP_LCD::showMessage("");
-        }
         get_finger.loop();
         get_finger.deinit();
         if (get_finger.getResCode() == Opera::OK) {
@@ -439,7 +446,6 @@ static bool Finger_Handle(bool isRegist)
         if (node != NULL && isNull == false) {
         TRY_PASSWORD:
             // Warnning if usr wanna replace the ID
-
             get_password->init();
             STP_LCD::showMessage(TEXT_REPLACE);
             get_password->loop();

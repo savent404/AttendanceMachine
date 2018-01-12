@@ -1,8 +1,8 @@
 #pragma once
 
 #include "DataBase.hpp"
-#include "stm32f4xx_hal.h"
 #include "GR307.h"
+#include "stm32f4xx_hal.h"
 #include <list>
 
 // FLASH 使用范围
@@ -119,12 +119,12 @@ public:
         }
         if (!isExit)
             return;
-				// Delete data in GR307
-				for (int i = 0; i < 5; i++) {
-						uint8_t* buf = node->finger[i].data();
-						uint16_t id = *buf | (*(buf + 1) << 8);
-						GR307_Delete(id);
-				}
+        // Delete data in GR307
+        for (int i = 0; i < 5; i++) {
+            uint8_t* buf = node->finger[i].data();
+            uint16_t id = *buf | (*(buf + 1) << 8);
+            GR307_Delete(id);
+        }
         std::list<DB_Usr>* new_arry = new std::list<DB_Usr>;
         for (auto n = arry->begin(); n != arry->end(); n++) {
             if (n != node) {
@@ -142,13 +142,7 @@ public:
     {
         if (arry->size())
             modi = true;
-				for (auto node : *arry) {
-          for (int i = 0; i < 5; i++) {
-						uint8_t* buf = node.finger[i].data();
-						uint16_t id = *buf | (*(buf + 1) << 8);
-						GR307_Delete(id);
-          }
-				}
+        GR307_Clear();
         arry->clear();
     }
     /**
@@ -259,15 +253,17 @@ public:
             HAL_FLASH_Program(FLASH_TYPEPROGRAM_BYTE, u32ptr++, password[i]);
         HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, u32ptr, size());
         u32ptr += 4;
-        uint8_t* pack = (uint8_t*)malloc(arry->begin()->size());
+        size_t pack_size = arry->begin()->size();
+        uint8_t* pack = (uint8_t*)malloc(pack_size);
         for (auto node = arry->begin(); node != arry->end(); node++) {
             node->packet(pack);
-            int cnt = node->size();
+            size_t cnt = pack_size;
             uint8_t* buf_ptr = pack;
             while (cnt--) {
                 HAL_FLASH_Program(FLASH_TYPEPROGRAM_BYTE, u32ptr++, *buf_ptr++);
             }
         }
+        free(pack);
         HAL_FLASH_Lock();
         modi = false;
         return true;

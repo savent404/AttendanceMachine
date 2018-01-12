@@ -6,7 +6,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define START_FRAME ((uint8_t)0xEF)
+#define START_FRAME0 ((uint8_t)0xEF)
+#define START_FRAME1 ((uint8_t)0xFE)
 
 extern "C" void STP_ServerCallback();
 class STP_ServerBase {
@@ -74,9 +75,10 @@ public:
 
 private:
     UART_HandleTypeDef* handle;
+    uint8_t frameBuffer[1];
     uint8_t recBuffer[1];
     uint8_t CMDBuffer[1];
-    uint8_t messageBuffer[4];
+    uint8_t messageBuffer[255];
     uint8_t sizeBuffer[1];
     uint8_t dataPos;
     enum {

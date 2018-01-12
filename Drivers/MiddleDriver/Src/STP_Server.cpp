@@ -24,16 +24,21 @@ STP_ServerBase::~STP_ServerBase() {}
 bool STP_ServerBase::sendMessage(enum CMD cmd, const uint8_t* message, size_t size)
 {
     uint8_t ans = 0;
-    uint8_t buffer[8];
-    buffer[0] = START_FRAME;
-    buffer[1] = (uint8_t)cmd;
-    buffer[2] = (uint8_t)size;
+    uint8_t *buffer = (uint8_t*)malloc(sizeof(uint8_t) * (size + 5));
+    buffer[0] = START_FRAME0;
+    buffer[1] = START_FRAME1;
+    buffer[2] = (uint8_t)cmd;
+    buffer[3] = (uint8_t)size;
+    ans += (uint8_t)cmd;
+    ans += (uint8_t)size;
     for (int i = 0; i < size; i++) {
-        buffer[3 + i] = *message;
+        buffer[4 + i] = *message;
         ans += *message++;
     }
-    buffer[3 + size] = ans;
-    return send(buffer, size + 4);
+    buffer[4 + size] = ans;
+    bool res = send(buffer, size + 5);
+    free(buffer);
+    return res;
 }
 bool STP_ServerBase::reciMessage()
 {
@@ -65,7 +70,7 @@ bool STP_ServerRS485::setReminder()
 void STP_ServerRS485::Callback()
 {
     // 强制的起始帧检查，以防止发送方信息结构错误后不能正常接收下一帧
-    if (*recBuffer == START_FRAME) {
+    if (frameBuffer[0] == START_FRAME0 && *recBuffer == START_FRAME1) {
         Recive_Status = waitCMD;
     } else if (Recive_Status == waitCMD) {
         CMDBuffer[0] = recBuffer[0];
@@ -89,11 +94,14 @@ void STP_ServerRS485::Callback()
         for (int i = 0; i < sizeBuffer[0]; i++) {
             _ans += messageBuffer[i];
         }
+        _ans += CMDBuffer[0];
+        _ans += sizeBuffer[0];
         if (ans == _ans) {
             goto GOT_A_MESSAGE;
         }
         Recive_Status = waitFrame;
     }
+    frameBuffer[0] = *recBuffer;
     goto NORMAL_OPERA;
 
 // 有效接受

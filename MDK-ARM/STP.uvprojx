@@ -653,6 +653,11 @@
               <FileType>8</FileType>
               <FilePath>..\Src\opera_handle.cpp</FilePath>
             </File>
+            <File>
+              <FileName>LCD_GUI.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>..\Src\LCD_GUI.cpp</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

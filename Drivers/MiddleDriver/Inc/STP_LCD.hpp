@@ -39,7 +39,7 @@ public:
     }
     static void showLabel(uint8_t size, int x1, int y1, int x2, const char* str, uint8_t mode)
     {
-        char buffer[50];
+        char buffer[100];
         sprintf(buffer, "LABL(%d,%d,%d,%d,\'%s\',7,%d);", size, x1, y1, x2, str, mode);
         send(buffer, strlen(buffer));
     }

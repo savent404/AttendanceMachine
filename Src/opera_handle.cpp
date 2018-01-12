@@ -191,7 +191,8 @@ WELCOME_FRESH:
         } else if (keyboard->isPress(STP_KeyMat::KEY_ID_NO)) {
             while (keyboard->scan())
                 ;
-            continue;
+            // continue;
+            goto WELCOME_FRESH;
         } else {
             goto CHOOSE_MODE;
         }

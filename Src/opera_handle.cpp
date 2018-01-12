@@ -154,6 +154,29 @@ WELCOME_FRESH:
             while (keyboard->scan())
                 ;
             continue;
+        } else if (keyboard->isPress(STP_KeyMat::KEY_ID_4)) {
+            uint8_t h, m, s;
+            uint8_t sh, sm, ss;
+            rtc->getTime(h, m, s);
+            while (keyboard->isPress(STP_KeyMat::KEY_ID_4)) {
+                rtc->getTime(sh, sm, ss);
+                STP_LCD::showMessage("Press 5 sec to erase flash");
+                if (sm * 60 + ss - m * 60 - s > 5) {
+                    for (int i = 0; i < 3; i++) {
+                        DB_Sheet* sheet = new DB_Sheet((enum DB_Sheet::DB_Sector)i);
+                        sheet->clear();
+                        sheet->writeBack();
+                        delete sheet;
+                    }
+                    STP_LCD::showMessage("Flash清空OK");
+                    HAL_Delay(2000);
+                    break;
+                }
+            }
+
+            while (keyboard->scan())
+                ;
+            continue;
         } else {
             goto CHOOSE_MODE;
         }
@@ -238,9 +261,9 @@ static bool NFC_Handle(bool isRegist)
     }
     get_nfc->loop();
     get_nfc->deinit();
-    if (get_key->getResCode() == Opera::USR_Cancel) {
+    if (get_nfc->getResCode() == Opera::USR_Cancel) {
         goto RETURN_EXIT_NFC;
-    } else if (get_key->getResCode() != Opera::OK) {
+    } else if (get_nfc->getResCode() != Opera::OK) {
         STP_LCD::showMessage(get_nfc->getErrorString());
         HAL_Delay(1000);
         goto RETURN_FALSE_NFC;
@@ -261,8 +284,9 @@ static bool NFC_Handle(bool isRegist)
         if (node != NULL && node->rfid.isNull() == false) {
         TRY_PASSWORD:
             // Warnning if usr wanna replace the ID
-            STP_LCD::showMessage(TEXT_REPLACE);
+
             get_password->init();
+            STP_LCD::showMessage(TEXT_REPLACE);
             get_password->loop();
             get_password->deinit();
             if (get_password->getResCode() == Opera::OK && DB_Sheet::checkPassword(get_password->getAns())) {
@@ -292,7 +316,7 @@ static bool NFC_Handle(bool isRegist)
             sheet->add(usr);
         }
         // Working...
-        GUI_Working(*rtc, -1, (const char*)(node->rid.data()));
+        GUI_Working(*rtc, -1, (const char*)(room_id->data()));
         sheet->writeBack(true);
         delete sheet;
         HAL_Delay(1000);
@@ -316,7 +340,7 @@ static bool NFC_Handle(bool isRegist)
             // send message to slaver
             server->sendMessage(STP_ServerBase::CMD_ID_RFID, node->rid.data(), 4);
             server->reciMessage();
-            GUI_Working(*rtc, -1, (const char*)(node->rid.data()));
+            GUI_Working(*rtc, -1, (char*)node->rid.data());
             HAL_Delay(1000);
             delete sheet;
         }
@@ -349,7 +373,7 @@ static bool Finger_Handle(bool isRegist)
 {
     Opera* get_key = new Opera_getUsrKey(*keyboard, Opera_getUsrKey::getRoomID);
     Opera* get_password = new Opera_getUsrKey(*keyboard, Opera_getUsrKey::getPassword);
-    Opera* get_finger = new Opera_getFinger(*keyboard, isRegist == true ? false : true);
+    //Opera* get_finger; // = new Opera_getFinger(*keyboard, isRegist == true ? false : true);
     DB_Base* finger_data = new DB_FingerPrint[5];
     DB_Base* room_id = new DB_RoomID;
     DB_Sheet* sheet;
@@ -372,8 +396,9 @@ static bool Finger_Handle(bool isRegist)
     }
 
     // Wait for Fingerprints
-    get_finger->init();
     for (int i = 0; i < ((isRegist == true) ? 5 : 1);) {
+        Opera_getFinger get_finger(*keyboard, isRegist == true ? i + 1 : 0);
+        get_finger.init();
         if (isRegist) {
             char buffer[2] = { 0x00, 0x00 };
             buffer[0] = '1' + i;
@@ -381,21 +406,18 @@ static bool Finger_Handle(bool isRegist)
         } else {
             STP_LCD::showMessage("");
         }
-        get_finger->loop();
-        if (get_finger->getResCode() == Opera::OK) {
-            finger_data[i++].overWrite(get_finger->getAns());
-        } else if (get_finger->getResCode() == Opera::USR_Cancel) {
+        get_finger.loop();
+        get_finger.deinit();
+        if (get_finger.getResCode() == Opera::OK) {
+            finger_data[i++].overWrite(get_finger.getAns());
+        } else if (get_finger.getResCode() == Opera::USR_Cancel) {
             goto RETURN_EXIT_FINGER;
         } else {
-            get_finger->deinit();
-            STP_LCD::showMessage(get_finger->getErrorString());
+            STP_LCD::showMessage(get_finger.getErrorString());
             HAL_Delay(1000);
-            get_finger->init();
             continue;
         }
     }
-    get_finger->deinit();
-
     if (isRegist) {
         // match RoomID in data sheet
         for (int i = 0; i <= 3; i++) {
@@ -417,8 +439,9 @@ static bool Finger_Handle(bool isRegist)
         if (node != NULL && isNull == false) {
         TRY_PASSWORD:
             // Warnning if usr wanna replace the ID
-            STP_LCD::showMessage(TEXT_REPLACE);
+
             get_password->init();
+            STP_LCD::showMessage(TEXT_REPLACE);
             get_password->loop();
             get_password->deinit();
             if (get_password->getResCode() == Opera::OK && DB_Sheet::checkPassword(get_password->getAns())) {
@@ -451,7 +474,7 @@ static bool Finger_Handle(bool isRegist)
             sheet->add(usr);
         }
         // Working...
-        GUI_Working(*rtc, -1, (const char*)(node->rid.data()));
+        GUI_Working(*rtc, -1, (const char*)(room_id->data()));
         sheet->writeBack(true);
         delete sheet;
         HAL_Delay(1000);
@@ -472,7 +495,7 @@ static bool Finger_Handle(bool isRegist)
             goto RETURN_FALSE_FINGER;
         } else {
             // send message to slaver
-            server->sendMessage(STP_ServerBase::CMD_ID_FINGER, node->rid.data(), 4);
+            server->sendMessage(STP_ServerBase::CMD_ID_FINGER, (node->rid.data()), 4);
             server->reciMessage();
             STP_LCD::clear();
             GUI_Working(*rtc, -1, (const char*)(node->rid.data()));
@@ -482,7 +505,6 @@ static bool Finger_Handle(bool isRegist)
     }
     delete get_key;
     delete get_password;
-    delete get_finger;
     delete finger_data;
     delete room_id;
     return false;
@@ -494,7 +516,6 @@ RETURN_FALSE_FINGER:
     }
     delete get_key;
     delete get_password;
-    delete get_finger;
     delete finger_data;
     delete room_id;
     return false;
@@ -506,7 +527,6 @@ RETURN_EXIT_FINGER:
     }
     delete get_key;
     delete get_password;
-    delete get_finger;
     delete finger_data;
     delete room_id;
     return true;
@@ -562,8 +582,8 @@ bool Key_Handle(bool isRegist)
         if (node != NULL && node->pid.isNull() == false) {
         TRY_PASSWORD:
             // Warnning if usr wanna replace the ID
-            STP_LCD::showMessage(TEXT_REPLACE);
             get_password->init();
+            STP_LCD::showMessage(TEXT_REPLACE);
             get_password->loop();
             get_password->deinit();
             if (get_password->getResCode() == Opera::OK && DB_Sheet::checkPassword(get_password->getAns())) {

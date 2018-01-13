@@ -28,14 +28,20 @@ class STP_LCD {
 public:
     STP_LCD() {}
     ~STP_LCD() {}
-    static void send(const char* buffer, const size_t cnt)
+    static void send(const char* buffer, const size_t cnt, bool wait = true)
     {
-        while (HAL_GPIO_ReadPin(LCD_BUSY_GPIO_Port, LCD_BUSY_Pin) == GPIO_PIN_SET)
-            ;
+        if (wait)
+            while (HAL_GPIO_ReadPin(LCD_BUSY_GPIO_Port, LCD_BUSY_Pin) == GPIO_PIN_SET)
+                ;
         HAL_UART_Transmit(LCD_UART, (uint8_t*)buffer, cnt, 100);
         HAL_UART_Transmit(LCD_UART, (uint8_t*)"\r\n", 2, 10);
-        while (HAL_GPIO_ReadPin(LCD_BUSY_GPIO_Port, LCD_BUSY_Pin) == GPIO_PIN_RESET)
-            ;
+        if (wait)
+            while (HAL_GPIO_ReadPin(LCD_BUSY_GPIO_Port, LCD_BUSY_Pin) == GPIO_PIN_RESET)
+                ;
+        if (!wait)
+            for (int i = 0; i < 100; i++)
+                for (int j = 0; j < 2; j++)
+                    ;
     }
     static void showLabel(uint8_t size, int x1, int y1, int x2, const char* str, uint8_t mode)
     {

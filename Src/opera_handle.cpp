@@ -37,7 +37,7 @@ static bool Key_Handle(bool isRegist);
  * @brief  下位机串口回调函数
  * @note   处于中断中，由于都是异常消息，默认触发软件复位
  */
-void rec_callback(enum STP_ServerBase::CMD cmd)
+void rec_callback(enum STP_ServerBase::CMD cmd, const uint8_t* buffer, size_t size)
 {
     switch (cmd) {
     case STP_ServerBase::CMD_ERROR_UNKNOW: {
@@ -640,6 +640,7 @@ bool Key_Handle(bool isRegist)
             goto RETURN_FALSE_KEY;
         } else {
             if (node->pid == *password) {
+                server->sendMessage(STP_ServerBase::CMD_ID_KEY, node->rid.data(), 4);
                 GUI_Operation(*rtc, -1, 0);
                 while (1) {
                     static uint16_t key_status = 0;

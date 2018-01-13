@@ -1,6 +1,6 @@
 #include "STP_Server.hpp"
 
-extern void rec_callback(enum STP_ServerBase::CMD cmd);
+extern void rec_callback(enum STP_ServerBase::CMD cmd, const uint8_t* buffer, size_t size);
 
 static STP_ServerBase* CurrentServerHandle = (STP_ServerBase*)NULL;
 static STP_ServerBase* STP_GetCurrentServer()
@@ -24,7 +24,7 @@ STP_ServerBase::~STP_ServerBase() {}
 bool STP_ServerBase::sendMessage(enum CMD cmd, const uint8_t* message, size_t size)
 {
     uint8_t ans = 0;
-    uint8_t *buffer = (uint8_t*)malloc(sizeof(uint8_t) * (size + 5));
+    uint8_t* buffer = (uint8_t*)malloc(sizeof(uint8_t) * (size + 5));
     buffer[0] = START_FRAME0;
     buffer[1] = START_FRAME1;
     buffer[2] = (uint8_t)cmd;
@@ -106,7 +106,7 @@ void STP_ServerRS485::Callback()
 
 // 有效接受
 GOT_A_MESSAGE:
-    rec_callback((enum CMD)CMDBuffer[0]);
+    rec_callback((enum CMD)CMDBuffer[0], messageBuffer, sizeBuffer[0]);
 NORMAL_OPERA:
     // 等待下一个字符
     setReminder();

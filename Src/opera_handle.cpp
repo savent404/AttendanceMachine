@@ -55,7 +55,7 @@ void rec_callback(enum STP_ServerBase::CMD cmd, const uint8_t* buffer, size_t si
     }
     HAL_GPIO_WritePin(BELL_GPIO_Port, BELL_Pin, GPIO_PIN_SET);
     while (1) {
-        if (keyboard->isPress(STP_KeyMat::KEY_ID_NO)) {
+        if (keyboard->isPress(STP_KeyMat::KEY_ID_NO, false)) {
             HAL_NVIC_SystemReset();
         }
     }
@@ -72,11 +72,9 @@ extern "C" void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
     HAL_GPIO_WritePin(BELL_GPIO_Port, BELL_Pin, GPIO_PIN_SET);
     STP_LCD::clear();
     STP_LCD::showMessage(TEXT_SECUR);
-    while (1) {
-        if (keyboard->isPress(STP_KeyMat::KEY_ID_NO)) {
-            HAL_NVIC_SystemReset();
-        }
+    while (keyboard->isPress(STP_KeyMat::KEY_ID_NO, false) == false) {
     }
+    HAL_NVIC_SystemReset();
 }
 /*********************************************
  * @name   OP_Handle

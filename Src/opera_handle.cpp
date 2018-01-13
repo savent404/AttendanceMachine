@@ -60,6 +60,24 @@ void rec_callback(enum STP_ServerBase::CMD cmd, const uint8_t* buffer, size_t si
         }
     }
 }
+
+extern "C" void EXTI2_IRQHandler(void)
+{
+    HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_2);
+}
+
+extern "C" void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+    server->sendMessage(STP_ServerBase::CMD_SECURITY, "", 0);
+    HAL_GPIO_WritePin(BELL_GPIO_Port, BELL_Pin, GPIO_PIN_SET);
+    STP_LCD::clear();
+    STP_LCD::showMessage(TEXT_SECUR);
+    while (1) {
+        if (keyboard->isPress(STP_KeyMat::KEY_ID_NO)) {
+            HAL_NVIC_SystemReset();
+        }
+    }
+}
 /*********************************************
  * @name   OP_Handle
  * @brief  操作执行实体

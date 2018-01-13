@@ -23,7 +23,7 @@ extern char TEXT_ERROR_UNKNOW[];
 extern char TEXT_ERROR_BREAKIN[];
 extern char TEXT_ERROR_LIMIT[];
 extern char TEXT_ERROR_CHAT[];
-
+extern char TEXT_SECUR[];
 class STP_LCD {
 public:
     STP_LCD() {}

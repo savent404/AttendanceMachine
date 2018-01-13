@@ -103,6 +103,7 @@ int main(void)
   MX_RTC_Init();
 
   /* USER CODE BEGIN 2 */
+  EXTI_KEY_Init();
   HAL_Delay(1000);
   OP_Handle();
   /* USER CODE END 2 */

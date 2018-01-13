@@ -171,7 +171,19 @@ void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 2 */
+void EXTI_KEY_Init(void)
+{
+    GPIO_InitTypeDef GPIO_InitStruct;
 
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+    GPIO_InitStruct.Pin = GPIO_PIN_2;
+    GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+    HAL_NVIC_EnableIRQ(EXTI2_IRQn);
+}
 /* USER CODE END 2 */
 
 /**

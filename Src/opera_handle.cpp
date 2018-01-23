@@ -131,12 +131,7 @@ void OP_Handle(void)
 WELCOME_FRESH:
     GUI_Welcome(*rtc, -1);
     while (1) {
-        static bool refresh = true;
         GUI_Welcome(*rtc, 1);
-        if (refresh) {
-            refresh = false;
-            STP_LCD::send(LCD_WELCOME, strlen(LCD_WELCOME));
-        }
         if (keyboard->isPress(STP_KeyMat::KEY_ID_0) && keyboard->isPress(STP_KeyMat::KEY_ID_DOWN)) {
             while (keyboard->scan())
                 ;
@@ -512,7 +507,6 @@ static bool Finger_Handle(bool isRegist)
             delete sheet;
         }
         if (node == NULL) {
-            STP_LCD::clear();
             STP_LCD::showMessage(TEXT_UNKNOWUSER);
             HAL_Delay(1000);
             goto RETURN_FALSE_FINGER;
@@ -520,7 +514,6 @@ static bool Finger_Handle(bool isRegist)
             // send message to slaver
             server->sendMessage(STP_ServerBase::CMD_ID_FINGER, (node->rid.data()), 4);
             server->reciMessage();
-            STP_LCD::clear();
             GUI_Working(*rtc, -1, (const char*)(node->rid.data()));
             HAL_Delay(2000);
             delete sheet;

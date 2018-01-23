@@ -1,5 +1,6 @@
 #pragma once
 
+#include "STP_RTC.hpp"
 #include "can.h"
 #include "usart.h"
 
@@ -30,7 +31,11 @@ public:
         CMD_ERROR_UNKNOW = 0x41, //从机未知错误
         CMD_ERROR_BREAKIN = 0x42, //未授权进入
         CMD_ERROR_LIMIT = 0x43, // 极限位置
-        CMD_ERROR_CHAT = 0x44
+        CMD_ERROR_CHAT = 0x44,
+
+        CMD_ACK = 0x80, // 用于回应消息
+        CMD_ASK = 0x81, // 心跳检查
+        CMD_TIMEOUT = 0x82 // 错误消息，内部访问(不发送到从机)
     };
     STP_ServerBase();
     virtual ~STP_ServerBase();

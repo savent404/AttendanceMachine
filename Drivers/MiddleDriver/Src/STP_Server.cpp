@@ -2,6 +2,29 @@
 
 extern void rec_callback(enum STP_ServerBase::CMD cmd, const uint8_t* buffer, size_t size);
 
+static STP_RTC rtc(&hrtc);
+
+static uint32_t pre_tick = 0;
+
+#define TIM_CONVERT(h, m, s) (h * 3600 + m * 60 + s)
+
+/**
+ * @brief 检查Ack回应
+ * @note  当server发送指令(非Ack)后进入计时模式(pre_tick!=0)
+ *        server在接收到Ack后会充值计时器(pre_tick = 0)
+ *        故在到达设定时间(tick - pre_tick > 2)后主机处理TIMEOUT消息
+ * @note  建议放在定时中断中循环调用
+ */
+extern "C" void slave_tick(void)
+{
+    uint8_t h, m, s;
+    rtc.getTime(h, m, s);
+    uint32_t tick = TIM_CONVERT(h, m, s);
+    if (!pre_tick && (tick - pre_tick > 2)) {
+        rec_callback(STP_ServerBase::CMD_TIMEOUT, "", 0);
+    }
+}
+
 static STP_ServerBase* CurrentServerHandle = (STP_ServerBase*)NULL;
 static STP_ServerBase* STP_GetCurrentServer()
 {
@@ -37,6 +60,12 @@ bool STP_ServerBase::sendMessage(enum CMD cmd, const uint8_t* message, size_t si
     }
     buffer[4 + size] = ans;
     bool res = send(buffer, size + 5);
+    // 设置新的定时器,记录当前时间
+    if (cmd != CMD_ACK) {
+        uint8_t h, m, s;
+        rtc.getTime(h, m, s);
+        pre_tick = TIM_CONVERT(h, m, s);
+    }
     free(buffer);
     return res;
 }
@@ -106,6 +135,11 @@ void STP_ServerRS485::Callback()
 
 // 有效接受
 GOT_A_MESSAGE:
+    // 当接收到消息后重置定时器
+    if (CMDBuffer[0] == CMD_ACK) {
+        pre_tick = 0;
+    }
+    sendMessage(CMD_ACK, NULL, 0);
     rec_callback((enum CMD)CMDBuffer[0], messageBuffer, sizeBuffer[0]);
 NORMAL_OPERA:
     // 等待下一个字符

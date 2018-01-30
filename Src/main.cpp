@@ -182,7 +182,7 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-extern "C" void slave_tick(void);
+extern "C" void slave_tick(uint16_t period);
 /* USER CODE END 4 */
 
 /**
@@ -202,10 +202,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     HAL_IncTick();
   }
 /* USER CODE BEGIN Callback 1 */
-  static uint8_t tick = 0;
-  if (++tick > 200) {
-    tick = 0;
-    slave_tick();
+  if (htim->Instance == TIM14) {
+    static uint8_t tick = 0;
+    if (++tick > 200) {
+      tick = 0;
+      slave_tick(200);
+    }
   }
 /* USER CODE END Callback 1 */
 }

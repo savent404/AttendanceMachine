@@ -1,5 +1,9 @@
 #include "opera.hpp"
 
+#ifndef SLAVE_DEBUG
+#define SLAVE_DEBUG 0
+#endif
+
 /** 说明
  *  - 所有c++ class 尽量使用指针 new/delete
  *      原因是只占用heap,方便查找问题以及内存控制
@@ -37,21 +41,29 @@ static bool Key_Handle(bool isRegist);
  * @brief  下位机串口回调函数
  * @note   处于中断中，由于都是异常消息，默认触发软件复位
  */
+#if SLAVE_DEBUG == 0
 void rec_callback(enum STP_ServerBase::CMD cmd, const uint8_t* buffer, size_t size)
 {
     switch (cmd) {
     case STP_ServerBase::CMD_ERROR_UNKNOW: {
-        STP_LCD::showMessage(TEXT_ERROR_UNKNOW);
+        STP_LCD::showMessage("Error unkown");
     } break;
     case STP_ServerBase::CMD_ERROR_BREAKIN: {
-        STP_LCD::showMessage(TEXT_ERROR_BREAKIN);
+        STP_LCD::showMessage("Error break in");
     } break;
     case STP_ServerBase::CMD_ERROR_LIMIT: {
-        STP_LCD::showMessage(TEXT_ERROR_LIMIT);
+        STP_LCD::showMessage("Error Limit");
     } break;
     case STP_ServerBase::CMD_ERROR_CHAT: {
-        STP_LCD::showMessage(TEXT_ERROR_CHAT);
+        STP_LCD::showMessage("Error Chat");
     } break;
+    case STP_ServerBase::CMD_TIMEOUT:
+        STP_LCD::showMessage("Time out");
+        break;
+    default:
+        char buf[20];
+        sprintf(buf, "unkown meesage:%x", (int)cmd);
+        STP_LCD::showMessage(buf);
     }
     HAL_GPIO_WritePin(BELL_GPIO_Port, BELL_Pin, GPIO_PIN_SET);
     while (1) {
@@ -60,6 +72,81 @@ void rec_callback(enum STP_ServerBase::CMD cmd, const uint8_t* buffer, size_t si
         }
     }
 }
+#else
+void rec_callback(enum STP_ServerBase::CMD cmd, const uint8_t* buffer, size_t size)
+{
+    const char* title = "";
+    char buff[50];
+    switch (cmd) {
+    case STP_ServerBase::CMD_ID_FINGER:
+        title = "CMD_ID_FINGER";
+        break;
+    case STP_ServerBase::CMD_ID_RFID:
+        title = "CMD_ID_RFID";
+        break;
+    case STP_ServerBase::CMD_ID_KEY:
+        title = "CMD_ID_KEY";
+        break;
+    case STP_ServerBase::CMD_UP_Start:
+        title = "CMD_UP_Start";
+        break;
+    case STP_ServerBase::CMD_UP_Stop:
+        title = "CMD_UP_Stop";
+        break;
+    case STP_ServerBase::CMD_DOWN_Start:
+        title = "CMD_DOWN_Start";
+        break;
+    case STP_ServerBase::CMD_DOWN_Stop:
+        title = "CMD_DOWN_Stop";
+        break;
+    case STP_ServerBase::CMD_RIGHT_Start:
+        title = "CMD_RIGHT_Start";
+        break;
+    case STP_ServerBase::CMD_RIGHT_Stop:
+        title = "CMD_RIGHT_Stop";
+        break;
+    case STP_ServerBase::CMD_LEFT_Start:
+        title = "CMD_LEFT_Stop";
+        break;
+    case STP_ServerBase::CMD_SECURITY:
+        title = "CMD_SECURITY";
+        break;
+    case STP_ServerBase::CMD_ERROR_UNKNOW:
+        title = "ERROR UNKNOW";
+        break;
+    case STP_ServerBase::CMD_ERROR_BREAKIN:
+        title = "ERROR Break in";
+        break;
+    case STP_ServerBase::CMD_ERROR_LIMIT:
+        title = "ERROR Limit";
+        break;
+    case STP_ServerBase::CMD_ERROR_CHAT:
+        title = "ERROR Chat";
+        break;
+    case STP_ServerBase::CMD_ASK:
+        title = "Ask";
+        break;
+    case STP_ServerBase::CMD_ACK:
+        title = "Ack";
+        break;
+    case STP_ServerBase::CMD_TIMEOUT:
+        title = "Time out";
+        break;
+    default:
+        title = "CMD::Unkown";
+    }
+    strcpy(buff, title);
+    if (size != 0) {
+        strcat(buff, " ");
+        for (int i = 0; i < size; i++) {
+            char a[3] = "  ";
+            a[0] = buffer[i];
+            strcat(buff, a);
+        }
+    }
+    STP_LCD::send(buff, strlen(buff), false);
+}
+#endif
 
 extern "C" void EXTI2_IRQHandler(void)
 {
@@ -80,6 +167,7 @@ extern "C" void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
  * @name   OP_Handle
  * @brief  操作执行实体
  */
+#if SLAVE_DEBUG == 0
 void OP_Handle(void)
 {
     server = new STP_ServerRS485(&huart1);
@@ -101,6 +189,7 @@ void OP_Handle(void)
         = Login;
 
     // Enable recive slave's message
+    server->sendMessage(STP_ServerBase::CMD_ACK, "", 0);
     server->reciMessage();
 
     // Software Reset flag
@@ -255,6 +344,18 @@ WELCOME_FRESH:
     }
 }
 
+#else
+void OP_Handle(void)
+{
+    STP_LCD::send("TERM;", strlen("TERM"), false);
+    server = new STP_ServerRS485(&huart1);
+    server->reciMessage();
+    HAL_Delay(500);
+    STP_LCD::send("HELLO", strlen("HELLO"), false);
+    while (1) {
+    }
+}
+#endif
 static bool NFC_Handle(bool isRegist)
 {
     Opera* get_key = new Opera_getUsrKey(*keyboard, Opera_getUsrKey::getRoomID);

@@ -51,18 +51,19 @@ public:
         pins[7].port = KB_8_GPIO_Port;
         pins[7].pin = KB_8_Pin;
 
-				tick = HAL_GetTick();
+        tick = HAL_GetTick();
     }
     ~STP_KeyMat() {}
-    uint16_t scan()
+    uint16_t scan(bool useTick = true)
     {
-				// per 10ms will check again
-				if (HAL_GetTick() - tick < 10) {
-						return ans;
-				} else {
-						tick = HAL_GetTick();
-				}
-				
+        if (useTick) {
+            // per 10ms will check again
+            if (HAL_GetTick() - tick < 10) {
+                return ans;
+            } else {
+                tick = HAL_GetTick();
+            }
+        }
         uint8_t res = origin_scan();
         uint8_t deleteKey = subMem & (~res);
         subMem &= res;
@@ -76,9 +77,9 @@ public:
         }
         return ans;
     }
-    bool isPress(enum Key id)
+    bool isPress(enum Key id, bool useTick = true)
     {
-        scan();
+        scan(useTick);
         if (ans & (1 << (int)id))
             return true;
         return false;
@@ -90,7 +91,7 @@ protected:
         GPIO_TypeDef* port;
         uint16_t pin;
     };
-		uint32_t tick;
+    uint32_t tick;
     // 保存上次扫描的原始数据
     uint8_t subMem;
     // 每位代表一个当前按下的按钮

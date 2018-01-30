@@ -23,23 +23,29 @@ extern char TEXT_ERROR_UNKNOW[];
 extern char TEXT_ERROR_BREAKIN[];
 extern char TEXT_ERROR_LIMIT[];
 extern char TEXT_ERROR_CHAT[];
-
+extern char TEXT_SECUR[];
 class STP_LCD {
 public:
     STP_LCD() {}
     ~STP_LCD() {}
-    static void send(const char* buffer, const size_t cnt)
+    static void send(const char* buffer, const size_t cnt, bool wait = true)
     {
-        while (HAL_GPIO_ReadPin(LCD_BUSY_GPIO_Port, LCD_BUSY_Pin) == GPIO_PIN_SET)
-            ;
+        if (wait)
+            while (HAL_GPIO_ReadPin(LCD_BUSY_GPIO_Port, LCD_BUSY_Pin) == GPIO_PIN_SET)
+                ;
         HAL_UART_Transmit(LCD_UART, (uint8_t*)buffer, cnt, 100);
         HAL_UART_Transmit(LCD_UART, (uint8_t*)"\r\n", 2, 10);
-        while (HAL_GPIO_ReadPin(LCD_BUSY_GPIO_Port, LCD_BUSY_Pin) == GPIO_PIN_RESET)
-            ;
+        if (wait)
+            while (HAL_GPIO_ReadPin(LCD_BUSY_GPIO_Port, LCD_BUSY_Pin) == GPIO_PIN_RESET)
+                ;
+        if (!wait)
+            for (int i = 0; i < 100; i++)
+                for (int j = 0; j < 2; j++)
+                    ;
     }
     static void showLabel(uint8_t size, int x1, int y1, int x2, const char* str, uint8_t mode)
     {
-        char buffer[50];
+        char buffer[100];
         sprintf(buffer, "LABL(%d,%d,%d,%d,\'%s\',7,%d);", size, x1, y1, x2, str, mode);
         send(buffer, strlen(buffer));
     }
@@ -47,31 +53,15 @@ public:
     {
         send(LCD_CLEAR, strlen(LCD_CLEAR));
     }
-    static void showTime(uint8_t h, uint8_t m, uint8_t s)
+    static void showTime(uint8_t size, int x1, int y1, int x2, uint8_t h, uint8_t m, uint8_t s)
     {
         char time[6];
         sprintf(time, "%02d:%02d:%02d", h, m, s);
-        showLabel(48, 330, 200, 530, time, 1);
+        showLabel(size, x1, y1, x2, time, 1);
     }
-    static void setTitle(const char* title)
-    {
-        showLabel(48, 230, 70, 640, title, 1);
-    }
-    static void showNum(const char* str, size_t maxlen = 0)
-    {
-        if (maxlen != 0) {
-            char buffer[50];
-            strncpy(buffer, str, maxlen);
-            buffer[maxlen] = '\0';
-            showLabel(48, 350, 160, 510, buffer, 1);
-
-        } else
-            showLabel(48, 350, 160, 510, str, 1);
-    }
-
     static void showMessage(const char* message)
     {
-        showLabel(48, 0, 250, 850, message, 1);
+        showLabel(32, 0, 250, 850, message, 1);
     }
     static const char* passwordLen(size_t len)
     {

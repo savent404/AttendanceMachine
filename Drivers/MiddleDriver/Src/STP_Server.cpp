@@ -1,6 +1,12 @@
 #include "STP_Server.hpp"
 
-extern void rec_callback(enum STP_ServerBase::CMD cmd);
+extern void rec_callback(enum STP_ServerBase::CMD cmd, const uint8_t* buffer, size_t size);
+
+static STP_RTC rtc(&hrtc);
+
+volatile static uint32_t pre_tick = 0;
+
+#define TIM_CONVERT(h, m, s) (m * 60 + s)
 
 static STP_ServerBase* CurrentServerHandle = (STP_ServerBase*)NULL;
 static STP_ServerBase* STP_GetCurrentServer()
@@ -17,6 +23,33 @@ void STP_ServerCallback()
     STP_ServerBase* ptr = STP_GetCurrentServer();
     ptr->Callback();
 }
+/**
+ * @brief 检查Ack回应
+ * @note  当server发送指令(非Ack)后进入计时模式(pre_tick!=0)
+ *        server在接收到Ack后会充值计时器(pre_tick = 0)
+ *        故在到达设定时间(tick - pre_tick > 2)后主机处理TIMEOUT消息
+ * @note  建议放在定时中断中循环调用
+ * @note  在定时器中调用时需要考虑串口接收中断循环嵌套的问题，定时器优先级应低于串口中断
+ */
+extern "C" void slave_tick(uint16_t period)
+{
+    static uint16_t count = 0;
+    uint8_t h, m, s;
+    rtc.getTime(h, m, s);
+    uint32_t tick = TIM_CONVERT(h, m, s);
+    //    if (++count * period > 5000) {
+    if (0) {
+        count = 0;
+        CurrentServerHandle->sendMessage(STP_ServerBase::CMD_ASK, "", 0);
+        return;
+    }
+    if (pre_tick == 0)
+        return;
+    else if (tick - pre_tick > 2) {
+        CurrentServerHandle->sendMessage(STP_ServerBase::CMD_TIMEOUT, "", 0);
+        rec_callback(STP_ServerBase::CMD_TIMEOUT, "", 0);
+    }
+}
 
 /** Class : Base ********************************************************/
 STP_ServerBase::STP_ServerBase() {}
@@ -24,16 +57,27 @@ STP_ServerBase::~STP_ServerBase() {}
 bool STP_ServerBase::sendMessage(enum CMD cmd, const uint8_t* message, size_t size)
 {
     uint8_t ans = 0;
-    uint8_t buffer[8];
-    buffer[0] = START_FRAME;
-    buffer[1] = (uint8_t)cmd;
-    buffer[2] = (uint8_t)size;
+    uint8_t* buffer = (uint8_t*)malloc(sizeof(uint8_t) * (size + 5));
+    buffer[0] = START_FRAME0;
+    buffer[1] = START_FRAME1;
+    buffer[2] = (uint8_t)cmd;
+    buffer[3] = (uint8_t)size;
+    ans += (uint8_t)cmd;
+    ans += (uint8_t)size;
     for (int i = 0; i < size; i++) {
-        buffer[3 + i] = *message;
+        buffer[4 + i] = *message;
         ans += *message++;
     }
-    buffer[3 + size] = ans;
-    return send(buffer, size + 4);
+    buffer[4 + size] = ans;
+    bool res = send(buffer, size + 5);
+    // 设置新的定时器,记录当前时间
+    if (cmd != CMD_ACK) {
+        uint8_t h, m, s;
+        rtc.getTime(h, m, s);
+        pre_tick = TIM_CONVERT(h, m, s);
+    }
+    free(buffer);
+    return res;
 }
 bool STP_ServerBase::reciMessage()
 {
@@ -65,7 +109,7 @@ bool STP_ServerRS485::setReminder()
 void STP_ServerRS485::Callback()
 {
     // 强制的起始帧检查，以防止发送方信息结构错误后不能正常接收下一帧
-    if (*recBuffer == START_FRAME) {
+    if (frameBuffer[0] == START_FRAME0 && *recBuffer == START_FRAME1) {
         Recive_Status = waitCMD;
     } else if (Recive_Status == waitCMD) {
         CMDBuffer[0] = recBuffer[0];
@@ -89,16 +133,26 @@ void STP_ServerRS485::Callback()
         for (int i = 0; i < sizeBuffer[0]; i++) {
             _ans += messageBuffer[i];
         }
+        _ans += CMDBuffer[0];
+        _ans += sizeBuffer[0];
+        Recive_Status = waitFrame;
         if (ans == _ans) {
             goto GOT_A_MESSAGE;
         }
-        Recive_Status = waitFrame;
     }
+    frameBuffer[0] = *recBuffer;
     goto NORMAL_OPERA;
 
 // 有效接受
 GOT_A_MESSAGE:
-    rec_callback((enum CMD)CMDBuffer[0]);
+    // 当接收到消息后重置定时器
+    if (CMDBuffer[0] == CMD_ACK) {
+        pre_tick = 0;
+    } else {
+        sendMessage(CMD_ACK, "", 0);
+        setReminder();
+        rec_callback((enum CMD)CMDBuffer[0], messageBuffer, sizeBuffer[0]);
+    }
 NORMAL_OPERA:
     // 等待下一个字符
     setReminder();

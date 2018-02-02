@@ -721,7 +721,7 @@ bool Key_Handle(bool isRegist)
 
             node->pid.overWrite(*password);
         } else if (node != NULL) {
-            sheet->writeBack(true);
+            node->pid.overWrite(password->data());
         } else {
             DB_Usr usr;
             sheet = new DB_Sheet(DB_Sheet::Sector_1);

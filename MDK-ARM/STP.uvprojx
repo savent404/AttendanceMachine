@@ -683,6 +683,16 @@
               <FileType>8</FileType>
               <FilePath>..\Drivers\MiddleDriver\Src\LCD_TEXT.cpp</FilePath>
             </File>
+            <File>
+              <FileName>DataSheet.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>..\Drivers\DataBase\DataSheet.cpp</FilePath>
+            </File>
+            <File>
+              <FileName>DataBase.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>..\Drivers\DataBase\DataBase.cpp</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

@@ -15,12 +15,12 @@ extern "C" void OP_Handle();
 extern void GUI_Welcome(STP_RTC& rtc, int32_t timeDelay);
 extern void GUI_Working(STP_RTC& rtc, int32_t timeDelay, const char* roomID);
 extern void GUI_InputFinger(STP_RTC& rtc, int32_t timeDelay, bool isPress, uint32_t idth = 0);
-extern void GUI_InputNFC(STP_RTC& rtc, int32_t timeDelay);
-extern void GUI_InputPassword(STP_RTC& rtc, int32_t timeDelay, char intputLen = 0);
-extern void GUI_InputRoomID(STP_RTC& rtc, int32_t timeDelay, const char* meesage);
+extern void GUI_InputNFC(STP_RTC& rtc, int32_t timeDelay, bool);
+extern void GUI_InputPassword(STP_RTC& rtc, int32_t timeDelay, bool isRoot, char intputLen = 0);
+extern void GUI_InputRoomID(STP_RTC& rtc, int32_t timeDelay, const char* meesage, uint8_t id);
 extern void GUI_InputTime(STP_RTC& rtc, int32_t timeDelay, const char* inputChar);
 extern void GUI_ChooseMode(STP_RTC& rtc, int32_t timeDelay);
-extern void GUI_ChooseSubMode(STP_RTC& rtc, int32_t timeDelay);
+extern void GUI_ChooseSubMode(STP_RTC& rtc, int32_t timeDelay, uint8_t id);
 extern void GUI_Operation(STP_RTC & rtc, int32_t timeDelay, uint8_t up_down_left_right);
 class Opera {
 public:
@@ -68,7 +68,7 @@ protected:
 
 class Opera_getNFC : public Opera {
 public:
-    Opera_getNFC(STP_KeyMat& kb);
+    Opera_getNFC(STP_KeyMat& kb, bool islogin);
     virtual bool init();
     virtual bool deinit();
     virtual bool exitCheck();
@@ -77,6 +77,7 @@ public:
 private:
     Adafruit_NFCShield_I2C* nfc;
     STP_KeyMat* keymat;
+    bool isLogin;
 };
 
 class Opera_getFinger : public Opera {
@@ -95,9 +96,12 @@ private:
 class Opera_getUsrKey : public Opera {
 public:
     enum getMode {
-        getPassword = 0,
-        getTime = 1,
-        getRoomID = 2
+        getPassword_Root = 0,
+        getPassword_Usr,
+        getTime,
+        getRoomID_Finger,
+        getRoomID_NFC,
+        getRoomID_Password,
     };
     Opera_getUsrKey(STP_KeyMat& kb, enum getMode mode);
     virtual bool init();

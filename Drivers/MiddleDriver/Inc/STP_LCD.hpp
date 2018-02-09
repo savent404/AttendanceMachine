@@ -6,24 +6,6 @@
 
 #define LCD_UART (&huart3)
 
-#define LCD_CLEAR "CLS(0);"
-extern char LCD_WELCOME[];
-extern char TEXT_NFC_001[];
-extern char TEST_FINGER_001[];
-extern char TEXT_FINGER_002[];
-extern char TEXT_TIME[];
-extern char TEXT_PASSWORD[];
-extern char TEXT_ROOMID[];
-extern char TEXT_UNKNOWUSER[];
-extern char TEXT_REPLACE[];
-extern char TEXT_CANCEL[];
-extern char TEXT_CHOOSE_MODE_1[];
-extern char TEXT_CHOOSE_MODE_2[];
-extern char TEXT_ERROR_UNKNOW[];
-extern char TEXT_ERROR_BREAKIN[];
-extern char TEXT_ERROR_LIMIT[];
-extern char TEXT_ERROR_CHAT[];
-extern char TEXT_SECUR[];
 class STP_LCD {
 public:
     STP_LCD() {}
@@ -43,41 +25,47 @@ public:
                 for (int j = 0; j < 2; j++)
                     ;
     }
-    static void showLabel(uint8_t size, int x1, int y1, int x2, const char* str, uint8_t mode)
+    static void showLabel(const char* message, int x = 350, int y = 250, uint8_t size = 48)
     {
-        char buffer[100];
-        sprintf(buffer, "LABL(%d,%d,%d,%d,\'%s\',7,%d);", size, x1, y1, x2, str, mode);
+        char buffer[50];
+        sprintf(buffer, "PS%d(1,%d,%d,'%s');", size, x, y, message);
         send(buffer, strlen(buffer));
     }
-    static void clear()
+    static void clear(uint8_t color = 8)
     {
-        send(LCD_CLEAR, strlen(LCD_CLEAR));
+        char buffer[10];
+        sprintf(buffer, "CLS(%d);", color);
+        send(buffer, strlen(buffer));
     }
-    static void showTime(uint8_t size, int x1, int y1, int x2, uint8_t h, uint8_t m, uint8_t s)
+    static void showTime(uint8_t h,
+        uint8_t m, uint8_t s,
+        int x1 = 345, int y1 = 230,
+        uint8_t size = 48)
     {
-        char time[6];
-        sprintf(time, "%02d:%02d:%02d", h, m, s);
-        showLabel(size, x1, y1, x2, time, 1);
+        char time[30];
+        sprintf(time, "PS%d(1,%d,%d,'%02d:%02d:%02d');", size, x1, y1, h, m, s);
+        send(time, strlen(time));
     }
-    static void showMessage(const char* message)
-    {
-        showLabel(32, 0, 250, 850, message, 1);
+    static void showPIC(uint8_t id) {
+        char buffer[10];
+        sprintf(buffer, "BPIC(1,0,0,%d);", id);
+        send(buffer, strlen(buffer));
     }
     static const char* passwordLen(size_t len)
     {
         switch (len) {
         case 0:
-            return "";
+            return "      ";
         case 1:
-            return "*";
+            return "*     ";
         case 2:
-            return "**";
+            return "**    ";
         case 3:
-            return "***";
+            return "***   ";
         case 4:
-            return "****";
+            return "****  ";
         case 5:
-            return "*****";
+            return "***** ";
         case 6:
             return "******";
         default:
@@ -85,3 +73,7 @@ public:
         }
     }
 };
+
+extern char TEXT_SECUR[];
+extern char TEXT_REPLACE[];
+extern char TEXT_UNKNOWUSER[];

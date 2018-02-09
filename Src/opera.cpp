@@ -6,27 +6,28 @@ extern STP_RTC* rtc;
  * @brief  获取4字节的RFID
  * @note   过程中响应退出事件
  */
-Opera_getNFC::Opera_getNFC(STP_KeyMat& kb)
+Opera_getNFC::Opera_getNFC(STP_KeyMat& kb, bool logic)
     : Opera(4)
+    , isLogin(logic)
 {
     keymat = &kb;
 }
 bool Opera_getNFC::init()
 {
-    GUI_InputNFC(*rtc, -1);
+    GUI_InputNFC(*rtc, -1, isLogin);
     nfc = new Adafruit_NFCShield_I2C(
         Adafruit_NFCShield_I2C::STM32_Pin(PN532_RDY_GPIO_Port, PN532_RDY_Pin),
         Adafruit_NFCShield_I2C::STM32_Pin((GPIO_TypeDef*)NULL, 0),
         &hi2c2);
     if (nfc == NULL) {
         ErrorCode = MEM_Error;
-        ErrorStr = "Can't offer mem for class:Adafruit_NFCShield_I2C";
+        ErrorStr = "Can not offer mem for class:Adafruit_NFCShield_I2C";
         return false;
     }
     nfc->begin();
     if (nfc->getFirmwareVersion() == 0) {
         ErrorCode = DRIVER_Error;
-        ErrorStr = "Can't find NFC module";
+        ErrorStr = "Can not find NFC module";
         return false;
     }
     nfc->setPassiveActivationRetries(0x02);
@@ -42,7 +43,7 @@ bool Opera_getNFC::exitCheck()
 {
     if (keymat->isPress(STP_KeyMat::KEY_ID_NO)) {
         while (keymat->scan())
-            GUI_InputNFC(*rtc, 1);
+            GUI_InputNFC(*rtc, 1, isLogin);
         ErrorCode = USR_Cancel;
         ErrorStr = "Usr Cancel";
         return true;
@@ -58,7 +59,7 @@ bool Opera_getNFC::loop()
             memcpy(ans, uid, 4);
             return true;
         }
-        GUI_InputNFC(*rtc, 1);
+        GUI_InputNFC(*rtc, 1, isLogin);
         if (exitCheck()) {
             return false;
         }
@@ -138,10 +139,13 @@ Opera_getUsrKey::Opera_getUsrKey(STP_KeyMat& kb, enum getMode mode)
     keymat = &kb;
     pos = 0;
     switch (mode) {
-    case getRoomID:
+    case getRoomID_Finger:
+    case getRoomID_NFC:
+    case getRoomID_Password:
         maxNum = 4;
         break;
-    case getPassword:
+    case getPassword_Root:
+    case getPassword_Usr:
         maxNum = 6;
         break;
     case getTime:
@@ -156,10 +160,12 @@ bool Opera_getUsrKey::init()
     memset(ans, 0, maxNum);
     if (_mode == getTime)
         GUI_InputTime(*rtc, -1, "\0\0\0\0\0\0");
-    if (_mode == getPassword)
-        GUI_InputPassword(*rtc, -1, 0);
-    if (_mode == getRoomID)
-        GUI_InputRoomID(*rtc, -1, "");
+    if (_mode == getPassword_Root)
+        GUI_InputPassword(*rtc, -1, true, 0);
+    if (_mode == getPassword_Usr)
+        GUI_InputPassword(*rtc, -1, false, 0);
+    if (_mode >= getRoomID_Finger && _mode <= getRoomID_Password)
+        GUI_InputRoomID(*rtc, -1, "    ", _mode - getRoomID_Finger);
     pos = 0;
     return true;
 }
@@ -233,11 +239,16 @@ bool Opera_getUsrKey::loop()
                 }
             }
             switch (_mode) {
-            case getRoomID:
-                GUI_InputRoomID(*rtc, 0, (char*)ans);
+            case getRoomID_Finger:
+            case getRoomID_NFC:
+            case getRoomID_Password:
+                GUI_InputRoomID(*rtc, 0, (char*)ans, _mode - getRoomID_Finger);
                 break;
-            case getPassword:
-                GUI_InputPassword(*rtc, 0, pos);
+            case getPassword_Root:
+                GUI_InputPassword(*rtc, 0, true, pos);
+                break;
+            case getPassword_Usr:
+                GUI_InputPassword(*rtc, 0, false, pos);
                 break;
             case getTime:
                 GUI_InputTime(*rtc, 0, (char*)ans);
@@ -249,11 +260,16 @@ bool Opera_getUsrKey::loop()
             }
         }
         switch (_mode) {
-        case getRoomID:
-            GUI_InputRoomID(*rtc, 1, (char*)ans);
+        case getRoomID_Finger:
+        case getRoomID_NFC:
+        case getRoomID_Password:
+            GUI_InputRoomID(*rtc, 1, (char*)ans, _mode - getRoomID_Finger);
             break;
-        case getPassword:
-            GUI_InputPassword(*rtc, 1, pos);
+        case getPassword_Root:
+            GUI_InputPassword(*rtc, 1, true, pos);
+            break;
+        case getPassword_Usr:
+            GUI_InputPassword(*rtc, 1, false, pos);
             break;
         case getTime:
             GUI_InputTime(*rtc, 1, (char*)ans);

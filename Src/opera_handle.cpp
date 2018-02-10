@@ -190,9 +190,9 @@ void OP_Handle(void)
     Opera* op;
 
     enum {
-        OPFinger = 0,
-        OPNFC = 1,
-        OPKey = 2
+        OPFinger = 3,
+        OPNFC = 2,
+        OPKey = 1
     } Mode
         = OPFinger;
 
@@ -383,19 +383,19 @@ void OP_Handle(void)
             server->sendMessage(STP_ServerBase::CMD_ERROR_UNKNOW, "", 0);
             server->reciMessage();
         }
-        if (keyboard->isPress(STP_KeyMat::KEY_ID_1)) {
+        else if (keyboard->isPress(STP_KeyMat::KEY_ID_1)) {
             while (keyboard->scan())
                 ;
             server->sendMessage(STP_ServerBase::CMD_ERROR_BREAKIN);
             server->reciMessage();
         }
-        if (keyboard->isPress(STP_KeyMat::KEY_ID_2)) {
+        else if (keyboard->isPress(STP_KeyMat::KEY_ID_2)) {
             while (keyboard->scan())
                 ;
             server->sendMessage(STP_ServerBase::CMD_ERROR_LIMIT);
             server->reciMessage();
         }
-        if (keyboard->isPress(STP_KeyMat::KEY_ID_3)) {
+        else if (keyboard->isPress(STP_KeyMat::KEY_ID_3)) {
             while (keyboard->scan())
                 ;
             server->sendMessage(STP_ServerBase::CMD_ERROR_CHAT);
@@ -407,7 +407,7 @@ void OP_Handle(void)
 static bool NFC_Handle(bool isRegist)
 {
     Opera* get_key = new Opera_getUsrKey(*keyboard, Opera_getUsrKey::getRoomID_NFC);
-    Opera* get_password = new Opera_getUsrKey(*keyboard, Opera_getUsrKey::getPassword_Usr);
+    Opera* get_password = new Opera_getUsrKey(*keyboard, Opera_getUsrKey::getPassword_Root);
     Opera* get_nfc = new Opera_getNFC(*keyboard, !isRegist);
     DB_Base* nfc_data = new DB_RFID;
     DB_Base* room_id = new DB_RoomID;
@@ -547,7 +547,7 @@ RETURN_EXIT_NFC:
 static bool Finger_Handle(bool isRegist)
 {
     Opera* get_key = new Opera_getUsrKey(*keyboard, Opera_getUsrKey::getRoomID_Finger);
-    Opera* get_password = new Opera_getUsrKey(*keyboard, Opera_getUsrKey::getPassword_Usr);
+    Opera* get_password = new Opera_getUsrKey(*keyboard, Opera_getUsrKey::getPassword_Root);
     //Opera* get_finger; // = new Opera_getFinger(*keyboard, isRegist == true ? false : true);
     DB_Base* finger_data = new DB_FingerPrint[5];
     DB_Base* room_id = new DB_RoomID;
@@ -747,29 +747,33 @@ bool Key_Handle(bool isRegist)
         if (node != NULL && node->pid.isNull() == false) {
         TRY_PASSWORD:
             // Warnning if usr wanna replace the ID
-            get_password->init();
+            Opera* get_password_root = new Opera_getUsrKey(*keyboard, Opera_getUsrKey::getPassword_Root);
+            get_password_root->init();
             STP_LCD::showLabel(TEXT_REPLACE, 280, 400, 32);
-            get_password->loop();
-            get_password->deinit();
-            if (get_password->getResCode() == Opera::OK && DB_Sheet::checkPassword(get_password->getAns())) {
+            get_password_root->loop();
+            get_password_root->deinit();
+            if (get_password_root->getResCode() == Opera::OK && DB_Sheet::checkPassword(get_password->getAns())) {
                 ;
-            } else if (get_password->getResCode() == Opera::OK) {
+            } else if (get_password_root->getResCode() == Opera::OK) {
                 STP_LCD::showLabel("Wrong Password");
                 HAL_Delay(1000);
+                delete get_password_root;
                 goto TRY_PASSWORD;
-            } else if (get_password->getResCode() == Opera::USR_Cancel) {
+            } else if (get_password_root->getResCode() == Opera::USR_Cancel) {
                 delete sheet;
+                delete get_password_root;
                 goto RETURN_FALSE_KEY;
             } else {
-                STP_LCD::showLabel(get_password->getErrorString());
+                STP_LCD::showLabel(get_password_root->getErrorString());
                 HAL_Delay(1000);
                 delete sheet;
+                delete get_password_root;
                 goto RETURN_FALSE_KEY;
             }
 
             node->pid.overWrite(*password);
         } else if (node != NULL) {
-            node->pid.overWrite(password->data());
+            sheet->writeBack(true);
         } else {
             DB_Usr usr;
             sheet = new DB_Sheet(DB_Sheet::Sector_1);

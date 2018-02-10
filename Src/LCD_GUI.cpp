@@ -4,6 +4,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+/**
+ * @brief  图形界面相关代码
+ * @brief  函数参数 timeDelay >0 时为图像更新周期, =0则每次调用都会更新
+ *                 timeDelay <0 时代码初始化操作(会额外更新背景图片等静态信息)
+ */
+
+// ECHODE: GBK
+
 char TEXT_SECUR[] = "安全报警,按下no键返回";
 char TEXT_REPLACE[] = "数据已存在，替换需输入管理员密码";
 char TEXT_UNKNOWUSER[] = "未找到该用户";
@@ -20,7 +28,7 @@ void GUI_Welcome(STP_RTC& rtc, int32_t timeDelay)
     rtc.getTime(h, m, s);
     if (timeDelay < 0) {
         STP_LCD::showPIC(3);
-        STP_LCD::showLabel("上海萨溢", 130, 50);
+        STP_LCD::showLabel("上海萨益", 130, 50);
         STP_LCD::showLabel("设备制造有限公司", 325, 50);
         STP_LCD::showLabel("0+\"下\" 进入管理模式", 20, 450, 16);
         STP_LCD::showLabel("智能车库 安全便捷", 240, 420);
@@ -40,7 +48,7 @@ void GUI_InputFinger(STP_RTC& rtc, int32_t timeDelay, bool isPress, uint32_t idt
         STP_LCD::showPIC(1);
         if (!idth) {
             STP_LCD::showLabel("\"取消\"键返回上一级", 20, 20, 16);
-            STP_LCD::showLabel("上海萨溢", 130, 50);
+            STP_LCD::showLabel("上海萨益", 130, 50);
             STP_LCD::showLabel("设备制造有限公司", 325, 50);
             STP_LCD::showLabel("0+\"下\" 进入管理模式", 20, 450, 16);
             STP_LCD::showLabel("智能车库 安全便捷", 240, 420);
@@ -55,7 +63,7 @@ void GUI_InputFinger(STP_RTC& rtc, int32_t timeDelay, bool isPress, uint32_t idt
         return;
     }
     if (isPress) {
-        STP_LCD::showLabel("轻松开手指", 300, 330);
+        STP_LCD::showLabel("请松开手指", 300, 330);
     }
     STP_LCD::showTime(h, m, s);
     s_sec = fullTime(h, m, s);
@@ -72,7 +80,7 @@ void GUI_InputNFC(STP_RTC& rtc, int32_t timeDelay, bool isLogin)
         STP_LCD::showLabel("请刷卡", 370, 120);
         STP_LCD::showLabel("\"取消\"键返回上一级", 20, 20, 16);
         if (isLogin) {
-            STP_LCD::showLabel("上海萨溢", 130, 50);
+            STP_LCD::showLabel("上海萨益", 130, 50);
             STP_LCD::showLabel("设备制造有限公司", 325, 50);
             STP_LCD::showLabel("智能车库 安全便捷", 240, 420);
         }

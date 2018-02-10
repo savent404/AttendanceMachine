@@ -110,6 +110,9 @@ void rec_callback(enum STP_ServerBase::CMD cmd, const uint8_t* buffer, size_t si
         title = "CMD_RIGHT_Stop";
         break;
     case STP_ServerBase::CMD_LEFT_Start:
+        title = "CMD_LEFT_Start";
+        break;
+    case STP_ServerBase::CMD_LEFT_Stop:
         title = "CMD_LEFT_Stop";
         break;
     case STP_ServerBase::CMD_SECURITY:
@@ -199,6 +202,8 @@ void OP_Handle(void)
     } subMode
         = Login;
 
+    // 最大亮度
+    STP_LCD::send("SEBL(100);", strlen("SEBL(100);"));
     // Enable recive slave's message, and check slave is avalibel first
     server->sendMessage(STP_ServerBase::CMD_ASK, "", 0);
     server->reciMessage();
@@ -233,7 +238,7 @@ WELCOME_FRESH:
     while (1) {
         GUI_Welcome(*rtc, 1);
         if (keyboard->isPress(STP_KeyMat::KEY_ID_0) && keyboard->isPress(STP_KeyMat::KEY_ID_DOWN)) {
-          TRY_AGAIN:
+        TRY_AGAIN:
             while (keyboard->scan())
                 ;
             op = new Opera_getUsrKey(*keyboard, Opera_getUsrKey::getPassword_Root);
@@ -243,12 +248,12 @@ WELCOME_FRESH:
             if (DB_Sheet::checkPassword(op->getAns()) == true) {
                 delete op;
                 break;
-              } else if (op->getResCode() == Opera::USR_Cancel) {
+            } else if (op->getResCode() == Opera::USR_Cancel) {
                 delete op;
                 goto WELCOME_FRESH;
             } else {
-              delete op;
-              goto TRY_AGAIN;
+                delete op;
+                goto TRY_AGAIN;
             }
         }
     }
@@ -364,9 +369,10 @@ WELCOME_FRESH:
 #else
 void OP_Handle(void)
 {
+    STP_LCD::send("SEBL(100);", strlen("SEBL(100);"));
     STP_LCD::send("TERM;", strlen("TERM"), false);
     server = new STP_ServerRS485(&huart1);
-  keyboard = new STP_KeyMat;
+    keyboard = new STP_KeyMat;
     server->reciMessage();
     HAL_Delay(500);
     STP_LCD::send("HELLO", strlen("HELLO"), false);
@@ -455,7 +461,7 @@ static bool NFC_Handle(bool isRegist)
         TRY_PASSWORD:
             // Warnning if usr wanna replace the ID
             get_password->init();
-            STP_LCD::showLabel(TEXT_REPLACE);
+            STP_LCD::send("SEBL(100);", strlen("SEBL(100);"));
             get_password->loop();
             get_password->deinit();
             if (get_password->getResCode() == Opera::OK && DB_Sheet::checkPassword(get_password->getAns())) {
@@ -602,7 +608,7 @@ static bool Finger_Handle(bool isRegist)
         TRY_PASSWORD:
             // Warnning if usr wanna replace the ID
             get_password->init();
-            STP_LCD::showLabel(TEXT_REPLACE);
+            STP_LCD::send("SEBL(100);", strlen("SEBL(100);"));
             get_password->loop();
             get_password->deinit();
             if (get_password->getResCode() == Opera::OK && DB_Sheet::checkPassword(get_password->getAns())) {
@@ -742,7 +748,7 @@ bool Key_Handle(bool isRegist)
         TRY_PASSWORD:
             // Warnning if usr wanna replace the ID
             get_password->init();
-            STP_LCD::showLabel(TEXT_REPLACE);
+            STP_LCD::showLabel(TEXT_REPLACE, 280, 400, 32);
             get_password->loop();
             get_password->deinit();
             if (get_password->getResCode() == Opera::OK && DB_Sheet::checkPassword(get_password->getAns())) {
